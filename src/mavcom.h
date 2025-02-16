@@ -27,8 +27,12 @@ class MavCom
         uint32_t m_lastHeartbeat;
         MavComUDP m_udp;
 
-        void handleMessage(const mavlink_message_t& msg);
+        void setMessageInterval();
+        void sendCommandInt(const uint16_t command, const uint8_t frame = 0, const float param1 = 0, const float param2 = 0, const float param3 = 0, const float param4 = 0, const float param5 = 0, const float param6 = 0, const float param7 = 0);
+        void sendMavlinkMessage(const mavlink_message_t *msg);
 
+        // -- MAVLink message handlers -- //
+        void handleMessage(const mavlink_message_t& msg);
         void handleMessageHeartbeat(const mavlink_message_t& msg);
         void handleMessageStatusText(const mavlink_message_t& msg);
         void handleMessageVibration(const mavlink_message_t& msg);
@@ -37,7 +41,7 @@ class MavCom
         void handleMessageOpticalFlow(const mavlink_message_t& msg);
         void handleMessageEstimatorStatus(const mavlink_message_t& msg);
         void handleMessageLandingTarget(const mavlink_message_t& msg);
-        
+        void handleMessageCurrentMode(const mavlink_message_t& msg);
 };
 
 #endif

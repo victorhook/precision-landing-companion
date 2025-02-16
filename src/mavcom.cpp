@@ -29,9 +29,7 @@ void MavCom::update_1hz()
         &msg,
         &heartbeat
     );
-    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-    uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
-    sendData(buf, len);
+    sendMavlinkMessage(&msg);
 }
 
 void MavCom::update_10hz()
@@ -84,6 +82,34 @@ void MavCom::update_100hz()
 }
 
 // -- Private -- //
+void MavCom::setMessageInterval()
+{
+
+}
+
+void MavCom::sendCommandInt(const uint16_t command, const uint8_t frame, const float param1, const float param2, const float param3, const float param4, const float param5, const float param6, const float param7)
+{
+    mavlink_message_t msg;
+    mavlink_msg_command_int_pack(
+        MAVLINK_SYSTEM_ID,
+        MAVLINK_COMPONENT_ID,
+        &msg,
+        1, 1, frame,
+        command,
+        0, 0,
+        param1, param2, param3, param4, param5, param6, param7
+    );
+    sendMavlinkMessage(&msg);
+}
+
+
+void MavCom::sendMavlinkMessage(const mavlink_message_t* msg)
+{
+    static uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+    uint16_t len = mavlink_msg_to_send_buffer(buf, msg);
+    sendData(buf, len);
+}
+
 void MavCom::handleMessage(const mavlink_message_t& msg)
 {
     //printf("New mavlink message: %d\n", msg.msgid);
@@ -110,6 +136,9 @@ void MavCom::handleMessage(const mavlink_message_t& msg)
             break;
         case MAVLINK_MSG_ID_LANDING_TARGET:
             handleMessageLandingTarget(msg);
+        case MAVLINK_MSG_ID_CURRENT_MODE:
+            handleMessageCurrentMode(msg);
+            break;
         case MAVLINK_MSG_ID_STATUSTEXT:
             handleMessageStatusText(msg);
             break;
@@ -171,4 +200,11 @@ void MavCom::handleMessageLandingTarget(const mavlink_message_t& msg)
 {
     mavlink_landing_target_t landing_target;
     mavlink_msg_landing_target_decode(&msg, &landing_target);
+}
+
+void MavCom::handleMessageCurrentMode(const mavlink_message_t& msg)
+{
+    mavlink_current_mode_t current_mode;
+    mavlink_msg_current_mode_decode(&msg, &current_mode);
+    printf("MODE: %d\n", current_mode.custom_mode);
 }

@@ -3,11 +3,14 @@
 
 #include "main.h"
 #include "mavcom.h"
+#include "camera.h"
 
 MavCom* mavcom;
+Camera* camera;
 
 #ifdef LINUX
     #include "mavcom_tcp.h"
+    #include "camera_linux.h"
 
     int main()
     {
@@ -27,11 +30,12 @@ void setup()
     printf("Precision-Landing-Companion starting up\n");
 
     #ifdef LINUX
-        mavcom = new MavComTCP("127.0.0.1", 5760);   
+        mavcom = new MavComTCP("127.0.0.1", 5760);
+        camera = new CameraLinux();
     #endif
 
     mavcom->init();
-
+    camera->init();
 }
 
 uint32_t frame = 0;
@@ -54,6 +58,10 @@ void loop()
     {
         mavcom->update_1hz();
     }
+    if (frame % 33 == 0)
+    {
+        camera->capture();
+    }
 
 
 
@@ -64,5 +72,4 @@ void loop()
     {
         delayMicroseconds(time_until_next_frame);
     }
-
 }

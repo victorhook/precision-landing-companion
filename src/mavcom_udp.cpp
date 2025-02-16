@@ -31,7 +31,6 @@ void MavComUDP::init()
 
     running = true;
     rx_thread = std::thread(&MavComUDP::rxLoop, this);
-    printf("UDPOK\n");
 }
 
 void MavComUDP::closeSocket()
