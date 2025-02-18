@@ -85,9 +85,10 @@ B3/B0 = tan(P-T)
 
 B2/B1 = tan(P+T)
  **/
-#ifdef LINUX
+//#ifdef LINUX
+// TODO: FIX?
     #define IRAM_ATTR
-#endif
+//#endif
 
 void IRAM_ATTR svd22(const float A[4], float U[4], float S[2], float V[4])
 {

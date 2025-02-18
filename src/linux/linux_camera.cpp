@@ -1,4 +1,5 @@
-#include "camera_linux.h"
+#include "linux_camera.h"
+
 #include <iostream>
 #include <opencv2/aruco.hpp>
 #include <opencv2/opencv.hpp>
@@ -9,13 +10,14 @@
 
 #include "apriltag.h"
 #include "tag16h5.h"
+#include "tagStandard41h12.h"
 
 #define UDP_IP "127.0.0.1"  // Change to your receiver’s IP
 #define UDP_PORT 9095
 #define CHUNK_SIZE 4096  // UDP max packet size
 
 
-void CameraLinux::doInit()
+bool CameraLinux::doInit()
 {
     std::cout << "Initializing Linux camera simulation, server at " << UDP_IP << ":" << UDP_PORT  << std::endl;
 
@@ -24,7 +26,7 @@ void CameraLinux::doInit()
     if (sockfd < 0)
     {
         std::cerr << "Error creating UDP socket" << std::endl;
-        return;
+        return false;
     }
 
     server_addr.sin_family = AF_INET;
@@ -36,8 +38,34 @@ void CameraLinux::doInit()
 
     if (!cap->isOpened()) {
         std::cerr << "❌ Error: Could not open camera!" << std::endl;
-        return;
+        return false;
     }
+
+    // -- Apriltag detection -- //
+    // Create tag family object
+    //tf = tag16h5_create();
+    tf = tagStandard41h12_create();
+
+    // Create AprilTag detector object
+    td = apriltag_detector_create();
+    
+    // Add tag family to the detector
+    apriltag_detector_add_family(td, tf);
+
+    // Tag detector configs
+    // quad_sigma is Gaussian blur's sigma
+    // quad_decimate: small number = faster but cannot detect small tags
+    //                big number = slower but can detect small tags (or tag far away)
+    // With quad_sigma = 1.0 and quad_decimate = 4.0, ESP32-CAM can detect 16h5 tag
+    // from the distance of about 1 meter (tested with tag on screen. not on paper)
+    td->quad_sigma = 1.0;
+    td->quad_decimate = 4.0;
+    td->refine_edges = 1;
+    td->decode_sharpening = 0.25;
+    td->nthreads = 1;
+    td->debug = 0;
+
+    return true;
 }
 
 #define USE_WEBCAM
@@ -94,8 +122,6 @@ void CameraLinux::run()
 
 void CameraLinux::processImage()
 {
-    std::cout << "Processing image..." << std::endl;
-
     // Convert to grayscale
     if (captured_image.channels() == 3)
     {
@@ -103,28 +129,6 @@ void CameraLinux::processImage()
     }
 
     char tag_detection_buf[128];
-
-    // Create tag family object
-    apriltag_family_t *tf = tag16h5_create();
-
-    // Create AprilTag detector object
-    apriltag_detector_t *td = apriltag_detector_create();
-    
-    // Add tag family to the detector
-    apriltag_detector_add_family(td, tf);
-
-    // Tag detector configs
-    // quad_sigma is Gaussian blur's sigma
-    // quad_decimate: small number = faster but cannot detect small tags
-    //                big number = slower but can detect small tags (or tag far away)
-    // With quad_sigma = 1.0 and quad_decimate = 4.0, ESP32-CAM can detect 16h5 tag
-    // from the distance of about 1 meter (tested with tag on screen. not on paper)
-    td->quad_sigma = 0.0;
-    td->quad_decimate = 4.0;
-    td->refine_edges = 0;
-    td->decode_sharpening = 0;
-    td->nthreads = 1;
-    td->debug = 0;
 
     image_u8_t* apriltag_image = image_u8_create_stride(captured_image.cols, captured_image.rows, captured_image.step);
     memcpy(apriltag_image->buf, captured_image.data, captured_image.total());
@@ -173,8 +177,6 @@ void CameraLinux::processImage()
     // Cleanup
     apriltag_detections_destroy(detections);
     image_u8_destroy(apriltag_image);
-    apriltag_detector_destroy(td);
-    tag16h5_destroy(tf);
     
     char fps_buf[128];
     sprintf(fps_buf, "FPS: %d", getFps());
@@ -232,7 +234,7 @@ void CameraLinux::sendImageOverUDP()
 
     // Send data in chunks
     size_t total_size = encoded.size();
-    std::cout << "Sending image over UDP" << std::endl;
+    //std::cout << "Sending " << total_size << " bytes over UDP" << std::endl;
     for (size_t i = 0; i < total_size; i += CHUNK_SIZE)
     {
         size_t chunk_size = std::min(static_cast<size_t>(CHUNK_SIZE), total_size - i);

@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define PLATFORM_NAME "linux"
+
 // Delay for a specified number of milliseconds
 void delay(const uint32_t ms);
 

@@ -1,21 +1,19 @@
-#include "mavcom_udp.h"
+#include "linux_transport_udp.h"
+
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <cstring>
 
-MavComUDP::MavComUDP(const std::string &ip, int port) 
-    : server_ip(ip), server_port(port), sockfd(-1), running(false) {}
-
-MavComUDP::~MavComUDP()
+TransportUDP_Linux::~TransportUDP_Linux()
 {
     running = false;
     closeSocket();
     if (rx_thread.joinable()) rx_thread.join();
 }
 
-void MavComUDP::init()
+void TransportUDP_Linux::init()
 {
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0)
@@ -27,13 +25,13 @@ void MavComUDP::init()
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(server_port);
-    inet_pton(AF_INET, server_ip.c_str(), &server_addr.sin_addr);
+    inet_pton(AF_INET, ip, &server_addr.sin_addr);
 
     running = true;
-    rx_thread = std::thread(&MavComUDP::rxLoop, this);
+    rx_thread = std::thread(&TransportUDP_Linux::rxLoop, this);
 }
 
-void MavComUDP::closeSocket()
+void TransportUDP_Linux::closeSocket()
 {
     if (sockfd >= 0)
     {
@@ -42,7 +40,7 @@ void MavComUDP::closeSocket()
     }
 }
 
-void MavComUDP::rxLoop()
+void TransportUDP_Linux::rxLoop()
 {
     uint8_t buffer[1024];
 
@@ -62,7 +60,7 @@ void MavComUDP::rxLoop()
     }
 }
 
-bool MavComUDP::readByte(uint8_t *byte, uint32_t timeoutMs)
+bool TransportUDP_Linux::readByte(uint8_t *byte, uint32_t timeoutMs)
 {
     std::unique_lock<std::mutex> lock(rx_mutex);
     
@@ -76,7 +74,7 @@ bool MavComUDP::readByte(uint8_t *byte, uint32_t timeoutMs)
     return true;
 }
 
-uint32_t MavComUDP::readBytes(uint8_t *bytes, uint32_t maxLen, uint32_t timeoutMs)
+uint32_t TransportUDP_Linux::readBytes(uint8_t *bytes, uint32_t maxLen, uint32_t timeoutMs)
 {
     std::unique_lock<std::mutex> lock(rx_mutex);
     
@@ -95,7 +93,7 @@ uint32_t MavComUDP::readBytes(uint8_t *bytes, uint32_t maxLen, uint32_t timeoutM
     return bytesRead;
 }
 
-uint32_t MavComUDP::writeBytes(const uint8_t *data, uint32_t len)
+uint32_t TransportUDP_Linux::writeBytes(const uint8_t *data, uint32_t len)
 {
     ssize_t bytes_sent = sendto(sockfd, data, len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
     return (bytes_sent > 0) ? bytes_sent : 0;

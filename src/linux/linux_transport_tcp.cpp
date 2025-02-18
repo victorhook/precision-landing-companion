@@ -1,13 +1,13 @@
-#include "mavcom_tcp.h"
+#include "linux_transport_tcp.h"
+
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <cstring>
 
-MavComTCP::MavComTCP(const std::string &ip, int port) : server_ip(ip), server_port(port), sockfd(-1), running(false) {}
 
-MavComTCP::~MavComTCP()
+TransportTCP_Linux::~TransportTCP_Linux()
 {
     running = false;
     closeSocket();
@@ -15,7 +15,7 @@ MavComTCP::~MavComTCP()
     if (rx_thread.joinable()) rx_thread.join();
 }
 
-void MavComTCP::doInit()
+void TransportTCP_Linux::init()
 {
     running = true;
     
@@ -27,11 +27,11 @@ void MavComTCP::doInit()
     }
 
     // Start TX and RX threads
-    tx_thread = std::thread(&MavComTCP::txLoop, this);
-    rx_thread = std::thread(&MavComTCP::rxLoop, this);
+    tx_thread = std::thread(&TransportTCP_Linux::txLoop, this);
+    rx_thread = std::thread(&TransportTCP_Linux::rxLoop, this);
 }
 
-bool MavComTCP::connectToServer()
+bool TransportTCP_Linux::connectToServer()
 {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
@@ -42,9 +42,9 @@ bool MavComTCP::connectToServer()
 
     struct sockaddr_in server_addr {};
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(server_port);
+    server_addr.sin_port = htons(port);
 
-    if (inet_pton(AF_INET, server_ip.c_str(), &server_addr.sin_addr) <= 0)
+    if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0)
     {
         std::cerr << "Invalid IP address" << std::endl;
         return false;
@@ -61,7 +61,7 @@ bool MavComTCP::connectToServer()
     return true;
 }
 
-void MavComTCP::closeSocket()
+void TransportTCP_Linux::closeSocket()
 {
     if (sockfd >= 0)
     {
@@ -70,7 +70,7 @@ void MavComTCP::closeSocket()
     }
 }
 
-void MavComTCP::txLoop()
+void TransportTCP_Linux::txLoop()
 {
     while (running)
     {
@@ -98,7 +98,7 @@ void MavComTCP::txLoop()
     }
 }
 
-void MavComTCP::rxLoop()
+void TransportTCP_Linux::rxLoop()
 {
     uint8_t buffer[1024];
 
@@ -124,17 +124,18 @@ void MavComTCP::rxLoop()
 }
 
 
-void MavComTCP::sendData(const uint8_t *data, uint32_t len)
+uint32_t TransportTCP_Linux::writeBytes(const uint8_t *data, uint32_t len)
 {
-    if (!data || len == 0) return;
+    if (!data || len == 0) return 0;
 
     std::lock_guard<std::mutex> lock(tx_mutex);
     tx_queue.push(std::vector<uint8_t>(data, data + len)); // Store as vector internally
     tx_cv.notify_one();
+    return len;
 }
 
 
-uint32_t MavComTCP::readBytes(uint8_t *buffer, uint32_t max_len, uint32_t timeoutMs)
+uint32_t TransportTCP_Linux::readBytes(uint8_t *buffer, uint32_t max_len, uint32_t timeoutMs)
 {
     if (!buffer || max_len == 0) return 0; // Fix: Return 0 instead of false
 
@@ -158,12 +159,12 @@ uint32_t MavComTCP::readBytes(uint8_t *buffer, uint32_t max_len, uint32_t timeou
 
 
 
-bool MavComTCP::readByteBlocking(uint8_t &byte, uint32_t timeout_ms)
+bool TransportTCP_Linux::readByte(uint8_t *byte, uint32_t timeoutMs)
 {
     std::unique_lock<std::mutex> lock(rx_mutex);
     
     // Wait for data to be available or timeout
-    if (!rx_cv.wait_for(lock, std::chrono::milliseconds(timeout_ms), [this] { return !rx_queue.empty(); }))
+    if (!rx_cv.wait_for(lock, std::chrono::milliseconds(timeoutMs), [this] { return !rx_queue.empty(); }))
     {
         return false; // Timeout
     }
@@ -172,7 +173,7 @@ bool MavComTCP::readByteBlocking(uint8_t &byte, uint32_t timeout_ms)
     if (!rx_queue.empty())
     {
         std::vector<uint8_t> &front = rx_queue.front();
-        byte = front.front();
+        *byte = front.front();
         front.erase(front.begin()); // Remove the read byte
 
         // If the vector is empty after reading, remove it from the queue

@@ -3,7 +3,11 @@
 
 #include "mavlink.h"
 #include "main.h"
-#include "mavcom_udp.h"
+
+// Transport
+#include "transport_tcp.h"
+#include "transport_udp.h"
+
 
 #define MAVLINK_SYSTEM_ID    42
 #define MAVLINK_COMPONENT_ID MAV_COMP_ID_ONBOARD_COMPUTER2
@@ -13,19 +17,15 @@ class MavCom
     public:
         MavCom();
         void init();
-        virtual void doInit() = 0;
         void update_100hz();
         void update_10hz();
         void update_1hz();
 
-    protected:
-        virtual void sendData(const uint8_t *data, uint32_t len) = 0;
-        virtual bool readByteBlocking(uint8_t &byte, uint32_t timeout_ms) = 0;
-        virtual uint32_t readBytes(uint8_t *buffer, uint32_t len, uint32_t max_len) = 0;
-
     private:
         uint32_t m_lastHeartbeat;
-        MavComUDP m_udp;
+        TransportUDP* m_udp;
+        TransportTCP* m_tcp;
+
 
         void setMessageInterval();
         void sendCommandInt(const uint16_t command, const uint8_t frame = 0, const float param1 = 0, const float param2 = 0, const float param3 = 0, const float param4 = 0, const float param5 = 0, const float param6 = 0, const float param7 = 0);

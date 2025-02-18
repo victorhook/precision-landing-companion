@@ -5,10 +5,13 @@
 #include <opencv2/opencv.hpp>
 #include <netinet/in.h>
 
+#include "apriltag.h"
+
+
 class CameraLinux : public Camera
 {
 public:
-    void doInit() override;
+    bool doInit() override;
     void doCapture() override;
     void run(); // Continuously captures, processes, and streams images
     const char* name() override;
@@ -16,6 +19,9 @@ public:
 private:
     cv::Mat captured_image;
     cv::VideoCapture* cap;
+
+    apriltag_family_t* tf;
+    apriltag_detector_t* td;
 
     int sockfd;
     struct sockaddr_in server_addr;

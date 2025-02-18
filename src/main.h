@@ -5,9 +5,14 @@
 #include <string.h>
 #include <stddef.h>
 
+
 #ifdef LINUX
-    #include "hal_linux.h"
+    #include "linux/hal_linux.h"
+#else
+    #include "esp32/hal_esp32.h"
 #endif
+
+
 
 
 #endif

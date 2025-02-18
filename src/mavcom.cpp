@@ -1,15 +1,25 @@
 #include "mavcom.h"
 
-MavCom::MavCom()
-: m_udp("127.0.0.1", 14550)
-{
+#ifdef LINUX
+    #include "linux/linux_transport_udp.h"
+    #include "linux/linux_transport_tcp.h"
+#endif
 
+MavCom::MavCom()
+{
+#ifdef LINUX
+    m_udp = new TransportUDP_Linux("127.0.0.1", 14550);
+    m_tcp = new TransportTCP_Linux("127.0.0.1", 5760);
+#endif
 }
 
 void MavCom::init()
 {
-    m_udp.init();
-    doInit();
+    // Start TCP connection to AP
+    m_tcp->init();
+
+    // Start UDP broadcast
+    m_udp->init();
 }
 
 
@@ -51,7 +61,7 @@ void MavCom::update_100hz()
     uint32_t rx_bytes;
 
     // Read from serial
-    rx_bytes = readBytes(transport_buf, 2048, 0);
+    rx_bytes = m_tcp->readBytes(transport_buf, 2048, 0);
     mavlink_status_t status_serial;
     mavlink_message_t msg_serial;
 
@@ -61,13 +71,13 @@ void MavCom::update_100hz()
         {
             handleMessage(msg_serial);
             uint16_t packet_len = mavlink_msg_to_send_buffer(mav_buf, &msg_serial);
-            m_udp.writeBytes(mav_buf, packet_len);
+            m_udp->writeBytes(mav_buf, packet_len);
             //printf("[SER] %u\n", msg_to_ap.seq);
         }
     }
 
     // Read from UDP
-    rx_bytes = m_udp.readBytes(transport_buf, 2048, 0);
+    rx_bytes = m_udp->readBytes(transport_buf, 2048, 0);
     mavlink_status_t status_udp;
     mavlink_message_t msg_udp;
     for (int i = 0; i < rx_bytes; i++)
@@ -75,7 +85,7 @@ void MavCom::update_100hz()
         if (mavlink_parse_char(1, transport_buf[i], &msg_udp, &status_udp))
         {
             uint16_t packet_len = mavlink_msg_to_send_buffer(mav_buf, &msg_udp);
-            sendData(mav_buf, packet_len);
+            m_tcp->writeBytes(mav_buf, packet_len);
             //printf("[UDP] %u\n", msg_to_gcs.seq);
         }
     }
@@ -107,12 +117,12 @@ void MavCom::sendMavlinkMessage(const mavlink_message_t* msg)
 {
     static uint8_t buf[MAVLINK_MAX_PACKET_LEN];
     uint16_t len = mavlink_msg_to_send_buffer(buf, msg);
-    sendData(buf, len);
+    m_tcp->writeBytes(buf, len);
 }
 
 void MavCom::handleMessage(const mavlink_message_t& msg)
 {
-    //printf("New mavlink message: %d\n", msg.msgid);
+    printf("New mavlink message: %d\n", msg.msgid);
     
     switch(msg.msgid)
     {

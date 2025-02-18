@@ -1,7 +1,8 @@
-#ifndef MAVCOM_TCP_H
-#define MAVCOM_TCP_H
+#ifndef TRANSPORT_TCP_LINUX
+#define TRANSPORT_TCP_LINUX
 
-#include "mavcom.h"
+#include "transport_tcp.h"
+
 #include <queue>
 #include <mutex>
 #include <thread>
@@ -10,22 +11,19 @@
 #include <vector>
 #include <string>
 
-class MavComTCP : public MavCom
+class TransportTCP_Linux : public TransportTCP
 {
 public:
-    MavComTCP(const std::string &ip, int port);
-    ~MavComTCP();
+    ~TransportTCP_Linux();
+    using TransportTCP::TransportTCP;
 
-    void doInit() override;
-
-    void sendData(const uint8_t *data, uint32_t len) override;
-    bool readByteBlocking(uint8_t &byte, uint32_t timeout_ms = 100) override;
-    uint32_t readBytes(uint8_t *buffer, uint32_t len, uint32_t max_len) override;
+    void init() override;
+    bool readByte(uint8_t *byte, uint32_t timeoutMs) override;
+    uint32_t readBytes(uint8_t *bytes, uint32_t maxLen, uint32_t timeoutMs) override;
+    uint32_t writeBytes(const uint8_t *data, uint32_t len) override;
 
 
 private:
-    std::string server_ip;
-    int server_port;
     int sockfd;
 
     std::condition_variable rx_cv;
@@ -47,4 +45,4 @@ private:
 
 };
 
-#endif // MAVCOM_TCP_H
+#endif // TRANSPORT_TCP_LINUX
