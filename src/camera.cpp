@@ -4,7 +4,7 @@
 
 
 Camera::Camera()
-: m_isInitialized(0), m_last_fps_update(0)
+: m_isInitialized(0), m_last_fps_update(0), m_thrown_frames(0)
 {
 
 }
@@ -38,4 +38,10 @@ void Camera::capture()
 int Camera::getFps()
 {
    return m_fps;
+}
+
+
+uint32_t Camera::getThrownFrames()
+{
+   return m_thrown_frames;
 }

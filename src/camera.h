@@ -31,9 +31,11 @@ class Camera
         bool init();
         void capture();
         int getFps();
+        uint32_t getThrownFrames();
 
     protected:
         bool m_isInitialized;
+        uint32_t m_thrown_frames;
         virtual bool doInit() = 0;
         virtual bool doCapture() = 0;
         virtual const char* name() = 0;

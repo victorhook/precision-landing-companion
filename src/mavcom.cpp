@@ -10,6 +10,9 @@ MavCom::MavCom()
 #ifdef LINUX
     m_udp = new TransportUDP_Linux("127.0.0.1", 14550);
     m_tcp = new TransportTCP_Linux("127.0.0.1", 5760);
+#else
+    //m_udp = new TransportUDP_ESP32("127.0.0.1", 14550);
+    //m_tcp = new TransportTCP_ESP32("127.0.0.1", 5760);
 #endif
 }
 
