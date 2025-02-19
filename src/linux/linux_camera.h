@@ -12,7 +12,7 @@ class CameraLinux : public Camera
 {
 public:
     bool doInit() override;
-    void doCapture() override;
+    bool doCapture() override;
     void run(); // Continuously captures, processes, and streams images
     const char* name() override;
 

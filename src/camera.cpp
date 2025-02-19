@@ -1,5 +1,8 @@
 #include "camera.h"
 
+#include "hal.h"
+
+
 Camera::Camera()
 : m_isInitialized(0), m_last_fps_update(0)
 {
@@ -23,9 +26,9 @@ void Camera::capture()
    doCapture();
    m_fps_counter++;
 
-   if ((millis() - m_last_fps_update) > 1000)
+   if ((hal_millis() - m_last_fps_update) > 1000)
    {
-      m_last_fps_update = millis();
+      m_last_fps_update = hal_millis();
       m_fps = m_fps_counter;
       m_fps_counter = 0;
    }

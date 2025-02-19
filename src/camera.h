@@ -1,7 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "main.h"
+#include <stdint.h>
 
 typedef struct
 {
@@ -35,7 +35,7 @@ class Camera
     protected:
         bool m_isInitialized;
         virtual bool doInit() = 0;
-        virtual void doCapture() = 0;
+        virtual bool doCapture() = 0;
         virtual const char* name() = 0;
 
     private:

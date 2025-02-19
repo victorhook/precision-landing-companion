@@ -165,7 +165,7 @@ void MavCom::handleMessageHeartbeat(const mavlink_message_t& msg)
 {
     mavlink_heartbeat_t heartbeat;
     mavlink_msg_heartbeat_decode(&msg, &heartbeat);
-    m_lastHeartbeat = millis();
+    m_lastHeartbeat = hal_millis();
     //printf("SYS_STATUS: %u\n", m_lastHeartbeat);
 }
 

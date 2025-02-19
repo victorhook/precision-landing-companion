@@ -70,13 +70,13 @@ bool CameraLinux::doInit()
 
 #define USE_WEBCAM
 
-void CameraLinux::doCapture()
+bool CameraLinux::doCapture()
 {
     // Capture from a real camera or load a test image
 #ifdef USE_WEBCAM
     if (!cap->isOpened()) {
         std::cerr << "❌ Error: Could not open camera!" << std::endl;
-        return;
+        return false;
     }
     
     *cap >> captured_image;  // Capture a frame
@@ -87,11 +87,13 @@ void CameraLinux::doCapture()
     if (captured_image.empty())
     {
         std::cerr << "Error: Could not load ArUco marker image!" << std::endl;
-        return;
+        return false;
     }
 
     processImage();
     sendImageOverUDP();
+    
+    return true;
 }
 
 void CameraLinux::run()

@@ -4,14 +4,15 @@
 #include <stdint.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdio.h>
 
+#include "hal.h"
 
 #ifdef LINUX
-    #include "linux/hal_linux.h"
+    #include "linux/linux_camera.h"
 #else
-    #include "esp32/hal_esp32.h"
+    #include "esp32/esp32_camera.h"
 #endif
-
 
 
 

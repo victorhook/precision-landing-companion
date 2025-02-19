@@ -1,29 +1,12 @@
-#include "mavlink.h"
-#include <stdio.h>
-
 #include "main.h"
+
 #include "mavcom.h"
 #include "camera.h"
+
 
 MavCom mavcom;
 Camera* camera;
 
-
-#ifdef LINUX
-    #include "linux/linux_camera.h"
-
-    int main()
-    {
-        setup();
-
-        while (1)
-        {
-            loop();
-        }
-
-        return 0;
-    }
-#endif
 
 void setup()
 {
@@ -34,6 +17,8 @@ void setup()
 
     #ifdef LINUX
         camera = new CameraLinux();
+    #else
+        camera = new CameraESP32();
     #endif
 
     mavcom.init();
@@ -70,10 +55,10 @@ void loop()
 
 
     next_frame += frame_period_us;
-    long time_until_next_frame = ((long) next_frame - (long) micros());
+    long time_until_next_frame = ((long) next_frame - (long) hal_micros());
     //printf("%d, %lu\n", frame, time_until_next_frame);
     if (time_until_next_frame > 0)
     {
-        delayMicroseconds(time_until_next_frame);
+        hal_delayMicroseconds(time_until_next_frame);
     }
 }
