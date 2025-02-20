@@ -3,6 +3,11 @@
 #include <chrono>
 #include <thread>
 
+void hal_init()
+{
+    
+}
+
 void hal_delay(const uint32_t ms)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));

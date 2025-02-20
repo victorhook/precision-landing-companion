@@ -2,7 +2,7 @@
 #define MAVCOM_H
 
 #include "mavlink.h"
-#include "main.h"
+#include "hal.h"
 
 // Transport
 #include "transport_tcp.h"

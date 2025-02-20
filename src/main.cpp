@@ -1,13 +1,12 @@
-#include "main.h"
+#include "hal.h"
 
 #include "mavcom.h"
 #include "camera.h"
-#include "WiFi.h"
-
+#include "telemetry.h"
 
 MavCom mavcom;
 Camera* camera;
-
+Telemetry telemetry(9096);
 
 void setup()
 {
@@ -16,23 +15,18 @@ void setup()
     printf("Platform: %s\n", PLATFORM_NAME);
     printf("Initializing drivers\n");
 
+    hal_init();
+
     #ifdef LINUX
         camera = new CameraLinux();
     #else
         camera = new CameraESP32();
     #endif
 
-    WiFi.mode(WIFI_STA);
-    WiFi.begin("COMHEM_f0a079", "ftmkntn2");
-    Serial.print("Connecting to WiFi ..");
-    while (WiFi.status() != WL_CONNECTED) {
-      Serial.print('.');
-      delay(1000);
-    }
-    Serial.println(WiFi.localIP());
-
     //mavcom.init();
     camera->init();
+
+    telemetry.init(camera);
 
     printf("Starting main loop\n");
     printf("\n");
@@ -58,6 +52,7 @@ void loop()
     if (frame % 1000 == 0)
     {
         //mavcom.update_1hz();
+        telemetry.update();
     }
     if (frame % 33 == 0)
     {
