@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telemetry Viewer</title>
+</head>
+<body>
+    <style>
+        body {
+            text-align: center;
+            min-height: 100vh;
+            background-color: rgb(39, 39, 39);
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .video {
+            margin-top: 5em;
+        }
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 50%;
+            background: white;
+            color: black;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid black;
+            text-align: left;
+        }
+    </style>
+
+    <img class="video" src="http://127.0.0.1:8080/video" width="640" height="480">
+
+    <table id="telemetry-table">
+        <thead>
+            <tr>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        async function fetchTelemetry() {
+            try {
+                const response = await fetch("http://127.0.0.1:8080/telemetry");
+                const data = await response.json();
+                if (data.length == 0) {
+                    return;
+                }
+
+                for (packet of data) {
+                    updateTelemetryTable(packet);
+                }
+            } catch (error) {
+                console.error("Failed to fetch telemetry:", error);
+            }
+        }
+
+        function updateTelemetryTable(data) {
+            const tableBody = document.getElementById("telemetry-table").querySelector("tbody");
+            tableBody.innerHTML = ""; // Clear old data
+
+            Object.entries(data).forEach(([key, value]) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `<td>${key}</td><td>${value}</td>`;
+                tableBody.appendChild(row);
+            });
+        }
+
+        setInterval(fetchTelemetry, 100); // Poll every 100ms (10Hz)
+    </script>
+</body>
+</html>
