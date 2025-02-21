@@ -1,0 +1,9 @@
+.pio
+.vscode/
+venv/
+terrain/
+mav.parm
+mav.tlog*
+eeprom.bin
+*.pyc
+tools/*jpg

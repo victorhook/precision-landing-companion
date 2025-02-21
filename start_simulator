@@ -1,0 +1,5 @@
+#!/bin/bash
+
+SITL=/home/victor/projects/ardupilot/build/sitl/bin/arducopter
+
+$SITL --model copter

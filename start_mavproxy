@@ -1,0 +1,10 @@
+#!/bin/bash
+
+TARGET_IP=127.0.0.1
+TARGET_PORT=14550
+
+
+source ~/projects/ardupilot/venv/bin/activate && \
+#mavproxy.py  --master=tcp:localhost:5760 --console
+mavproxy.py --source-system=41 --source-component=190 --target-system=1 --target-component=1 \
+    --master=udp:${TARGET_IP}:${TARGET_PORT} --console
