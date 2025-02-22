@@ -17,15 +17,22 @@ void Telemetry::init(Camera* camera)
 
 void Telemetry::update()
 {
-    constexpr int packetSize = 1 + sizeof(telemetry_status_t);
+    const int header_size = 3;
+    constexpr int packetSize = header_size + sizeof(telemetry_status_t);
     static uint8_t buf[packetSize];
     
     status.upTimeMs = millis();
     status.cameraFps = (uint8_t) camera->getFps();
+    status.freeHeap = ESP.getFreeHeap();
 
     // Construct packet
-    buf[0] = TELEMETRY_PACKET_STATUS;
-    memcpy(&buf[1], &status, sizeof(telemetry_status_t));
+    telemetry_packet_t* tx = (telemetry_packet_t*) buf;
+    // Byte 0 is packet type
+    tx->type = TELEMETRY_PACKET_STATUS;
+    // Byte 1-2 is packet length
+    tx->len = sizeof(telemetry_status_t);
+
+    memcpy(&buf[header_size], &status, tx->len);
 
     tcpServer->writeBytes(buf, packetSize);
     tcpServer->flushTX();

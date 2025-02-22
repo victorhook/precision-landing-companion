@@ -9,17 +9,27 @@
 // Byte 1:   Packet size
 // Byte 2-X: Payload 
 
+// -- TELEMTRY_START START -- //
 typedef struct
 {
     uint32_t upTimeMs;
     uint8_t  cameraFps;
+    uint32_t freeHeap;
 }__attribute__((packed)) telemetry_status_t;
+// -- TELEMTRY_START END -- //
 
-typedef enum
+typedef enum : uint8_t
 {
     TELEMETRY_PACKET_STATUS        = 0x01,
     TELEMETRY_PACKET_MARKERS_FOUND = 0x02,
 } telemetry_packet_type_t;
+
+typedef struct
+{
+    telemetry_packet_type_t type;
+    uint16_t len;
+    uint8_t* data;
+}__attribute__((packed)) telemetry_packet_t;
 
 
 class Telemetry
