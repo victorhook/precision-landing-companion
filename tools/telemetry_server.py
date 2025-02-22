@@ -5,27 +5,13 @@ from dataclasses import dataclass, asdict
 import struct
 from queue import Queue, Empty
 
+from telemetry_def import TelemetryPacket, TelemetryStatus
+
 
 class TelemetryPacketType(IntEnum):
     STATUS = 0x01
     MARKERS_FOUND = 0x02
 
-@dataclass
-class TelemetryPacket:
-    pass
-
-    def to_json(self) -> str:
-        return {
-            'type': self.__class__.__name__,
-            **asdict(self)
-        }
-
-@dataclass
-class TelemetryStatus(TelemetryPacket):
-    upTimeMs: int
-    cameraFps: int
-
-    _fmt = '<IB'
 
 
 class TelemetryServer:
@@ -51,19 +37,30 @@ class TelemetryServer:
             return None
 
     def start(self, ip: str, port: int) -> None:
-        print(f'Connecting to {ip}:{port}')
+        print(f'Telemetry server Connecting to {ip}:{port}')
         self._socket.connect((ip, port))
-        print(f'Connected to {ip}:{port}')
+        print(f'Telemetry server Connected to {ip}:{port}')
 
         while True:
-            packet_size = 6
-            pkt = self._socket.recv(packet_size)
-            if len(pkt) != 6:
-                print('Malformed package...')
+            # Byte [0] we'll read the first byte which is the packet type
+            packet_type_raw = self._socket.recv(1)
+
+            try:
+                packet_type = TelemetryPacketType(ord(packet_type_raw))
+            except ValueError:
+                print(f'Invalid packet type 0x{hex(ord(packet_type_raw))[2:].zfill(2)}')
                 continue
 
-            packet_type = TelemetryPacketType(int(pkt[0]))
-            payload = pkt[1:]
+            # Byte [1-2] is packet length
+            packet_len_raw = self._socket.recv(2)
+            packet_len = struct.unpack('<H', packet_len_raw)[0]
+
+            if packet_len > 10000:
+                print('Packet length above 3000, probably wrong...!')
+                continue
+
+            # Read payload data
+            payload = self._socket.recv(packet_len)
 
             if packet_type == TelemetryPacketType.STATUS:
                 status = TelemetryStatus(*struct.unpack(TelemetryStatus._fmt, payload))
