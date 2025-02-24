@@ -110,3 +110,8 @@ void TransportTCP_Server_ESP32::flushTX()
         client.flush();
     }
 }
+
+bool TransportTCP_Server_ESP32::clientConnected()
+{
+    return (client && client.connected());
+}

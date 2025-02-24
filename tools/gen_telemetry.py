@@ -110,7 +110,7 @@ def gen_telemetry(telemetry_filepath: str, output_path: str) -> str:
 
             def to_json(self) -> str:
                 return {
-                    'type': self.__class__.__name__,
+                    'type': self.__class__.__name__.split('Telemetry')[-1],
                     **asdict(self)
                 }
 

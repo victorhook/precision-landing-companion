@@ -5,7 +5,8 @@
 #include <string.h>
 #include <stddef.h>
 #include <stdio.h>
-
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 
 /* Delay for a specified number of milliseconds */
 void hal_delay(const uint32_t ms);
@@ -22,6 +23,20 @@ uint32_t hal_micros();
 /* Initializes the HAL */
 void hal_init();
 
+/* Abstract class for thread-safe queue */
+template <typename T>
+class HAL_Queue
+{
+public:
+    virtual ~HAL_Queue() = default;
+
+    virtual bool push(const T &item, uint32_t timeoutMs = 0) = 0;  // ✅ Now supports timeout
+    virtual bool pop(T &item, uint32_t timeoutMs = 0) = 0;         // ✅ Now supports timeout
+    virtual bool isEmpty() = 0;
+    virtual bool isFull() = 0;
+    virtual uint32_t maxSize() = 0;  // ✅ Returns queue capacity
+};
+
 // -- Platform specific -- //
 #ifdef LINUX
     #include "linux/linux_camera.h"
@@ -32,11 +47,13 @@ void hal_init();
     void loop();
 #else
     #include <Arduino.h>
+    #include "esp32/esp32_hal.h"
     #include "esp32/esp32_camera.h"
     #include "esp32/esp32_transport_tcp_server.h"
     #include "esp32/esp32_transport_udp.h"
     #define PLATFORM_NAME "esp32-s3"
     #define TCP_SERVER_CLASS TransportTCP_Server_ESP32
+    #define HAL_QUEUE_CLASS(type, maxSize) ESP32Queue<type>(maxSize)
 #endif
 
 #endif

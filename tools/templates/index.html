@@ -8,19 +8,27 @@
 <body>
     <style>
         body {
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             min-height: 100vh;
             background-color: rgb(39, 39, 39);
             color: white;
             font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
         }
         .video {
-            margin-top: 5em;
+            margin-bottom: 20px;
         }
         table {
-            margin: 20px auto;
             border-collapse: collapse;
-            width: 50%;
+            width: 300px;
             background: white;
             color: black;
         }
@@ -29,30 +37,56 @@
             border: 1px solid black;
             text-align: left;
         }
+        .log-console {
+            width: 400px;
+            height: 300px;
+            background: black;
+            color: white;
+            border: 1px solid gray;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        .log-debug { color: lightgray; }
+        .log-info { color: cyan; }
+        .log-warning { color: yellow; }
+        .log-error { color: red; }
     </style>
 
+    <!-- ✅ Camera Image (Restored) -->
     <img class="video" src="http://127.0.0.1:8080/video" width="640" height="480">
 
-    <table id="telemetry-table">
-        <thead>
-            <tr>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <div class="container">
+        <!-- ✅ Telemetry Table -->
+        <table id="telemetry-table">
+            <thead>
+                <tr><th>Field</th><th>Value</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <!-- ✅ Log Console -->
+        <div class="log-console" id="log-console"></div>
+    </div>
 
     <script>
         async function fetchTelemetry() {
             try {
                 const response = await fetch("http://127.0.0.1:8080/telemetry");
                 const data = await response.json();
-                if (data.length == 0) {
-                    return;
-                }
+                if (!Array.isArray(data) || data.length === 0) return; // ✅ Prevent issues with empty JSON
 
-                for (packet of data) {
-                    updateTelemetryTable(packet);
-                }
+                
+                data.forEach(packet => {
+                    console.log(packet)
+                    if (packet.type === "Status") {
+                        updateTelemetryTable(packet);
+                    } else if (packet.type === "Log") {
+                        addLogMessage(packet);
+                    }
+                });
             } catch (error) {
                 console.error("Failed to fetch telemetry:", error);
             }
@@ -60,16 +94,38 @@
 
         function updateTelemetryTable(data) {
             const tableBody = document.getElementById("telemetry-table").querySelector("tbody");
-            tableBody.innerHTML = ""; // Clear old data
+            tableBody.innerHTML = ""; // ✅ Clear old data before updating
 
             Object.entries(data).forEach(([key, value]) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `<td>${key}</td><td>${value}</td>`;
-                tableBody.appendChild(row);
+                if (key !== "type") { // ✅ Don't include "type" field in table
+                    const row = document.createElement("tr");
+                    row.innerHTML = `<td>${key}</td><td>${value}</td>`;
+                    tableBody.appendChild(row);
+                }
             });
         }
 
-        setInterval(fetchTelemetry, 100); // Poll every 100ms (10Hz)
+        function addLogMessage(log) {
+            const logConsole = document.getElementById("log-console");
+            const logEntry = document.createElement("div");
+
+            const levelClass = {
+                0: "log-debug",
+                1: "log-info",
+                2: "log-warning",
+                3: "log-error"
+            }[log.level] || "log-info"; // ✅ Default to info if level is unknown
+
+            logEntry.className = levelClass;
+            logEntry.textContent = `[${log.timestamp}] ${log.msg}`;
+
+            logConsole.appendChild(logEntry);
+
+            // ✅ Auto-scroll to latest log
+            logConsole.scrollTop = logConsole.scrollHeight;
+        }
+
+        setInterval(fetchTelemetry, 100); // ✅ Poll every 100ms (10Hz)
     </script>
 </body>
 </html>

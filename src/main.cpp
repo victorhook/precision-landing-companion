@@ -3,6 +3,7 @@
 #include "mavcom.h"
 #include "camera.h"
 #include "telemetry.h"
+#include "log.h"
 
 MavCom mavcom;
 Camera* camera;
@@ -10,10 +11,10 @@ Telemetry telemetry(9096);
 
 void setup()
 {
-    printf("\n");
-    printf("** Precision-Landing-Companion starting up **\n");
-    printf("Platform: %s\n", PLATFORM_NAME);
-    printf("Initializing drivers\n");
+    info("\n");
+    info("** Precision-Landing-Companion starting up **\n");
+    info("Platform: %s\n", PLATFORM_NAME);
+    info("Initializing drivers\n");
 
     hal_init();
 
@@ -28,8 +29,7 @@ void setup()
 
     telemetry.init(camera);
 
-    printf("Starting main loop\n");
-    printf("\n");
+    info("Starting main loop\n\n");
 }
 
 uint32_t frame = 0;
@@ -79,7 +79,7 @@ static void print_statistics()
     static uint32_t last_print = 0;
     if ((millis() - last_print) > 1000)
     {
-        printf("FPS: %d, Thrown: %d, IP: %s\n", camera->getFps(), camera->getThrownFrames(), WiFi.localIP().toString().c_str());
+        info("FPS: %d, Thrown: %d, IP: %s\n", camera->getFps(), camera->getThrownFrames(), WiFi.localIP().toString().c_str());
         last_print = millis();
     }
 }

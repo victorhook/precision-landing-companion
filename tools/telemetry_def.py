@@ -8,7 +8,7 @@ class TelemetryPacket:
 
     def to_json(self) -> str:
         return {
-            'type': self.__class__.__name__,
+            'type': self.__class__.__name__.split('Telemetry')[-1],
             **asdict(self)
         }
 

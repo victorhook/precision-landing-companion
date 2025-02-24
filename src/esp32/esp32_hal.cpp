@@ -1,5 +1,6 @@
-#include "hal.h"
+#include "esp32_hal.h"
 #include "WiFi.h"
+#include <cstring> // For memcpy
 
 static bool startWifiHotSpot = false;
 

@@ -16,6 +16,7 @@ class TransportTCP_Server_ESP32 : public TransportTCP_Server
         uint32_t readBytes(uint8_t *bytes, uint32_t maxLen, uint32_t timeoutMs) override;
         uint32_t writeBytes(const uint8_t *data, uint32_t len) override;
         void flushTX() override;
+        bool clientConnected() override;
 
     private:
         WiFiClient client;
