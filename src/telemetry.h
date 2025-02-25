@@ -5,7 +5,7 @@
 #include "camera.h"
 #include "hal.h"
 
-#define TELEMTRY_LOG_MSG_MAX_SIZE 50
+#define TELEMTRY_LOG_MSG_MAX_SIZE 100
 
 // Telemtry packet format
 // Byte 0:   Packet type
@@ -14,9 +14,9 @@
 
 typedef enum : uint8_t
 {
-    TELEMETRY_PACKET_STATUS        = 0x01,
-    TELEMETRY_PACKET_MARKERS_FOUND = 0x02,
-    TELEMETRY_PACKET_LOG           = 0x03,
+    TELEMETRY_PACKET_STATUS = 0x01,
+    TELEMETRY_PACKET_TAGS   = 0x02,
+    TELEMETRY_PACKET_LOG    = 0x03,
 } telemetry_packet_type_t;
 
 typedef enum : uint8_t

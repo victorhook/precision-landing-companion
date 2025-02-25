@@ -60,6 +60,16 @@ void Telemetry::update()
         tcpServer->flushTX();
     }
 
+    // Check tag detections
+    static tag_position tags[10];
+    uint8_t tags_detected = camera->getTagsDetected(tags);
+    tx->type = TELEMETRY_PACKET_TAGS;
+    tx->len = 1 + (tags_detected * sizeof(telemetry_log_t));
+    // First payload byte: nbr of tags, the remainder is tag data
+    buf[header_size] = tags_detected;
+    memcpy(&buf[header_size + 1], &tags, tx->len);
+    tcpServer->writeBytes(buf, header_size + tx->len);
+    tcpServer->flushTX();
 }
 
 bool Telemetry::sendLogMsg(const log_level_t level, const char* msg)

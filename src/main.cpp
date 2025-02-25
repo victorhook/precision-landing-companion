@@ -76,10 +76,12 @@ void loop()
 
 static void print_statistics()
 {
+    tag_position tags[10];
     static uint32_t last_print = 0;
+    uint8_t tags_detected = camera->getTagsDetected(tags);
     if ((millis() - last_print) > 1000)
     {
-        info("FPS: %d, Thrown: %d, IP: %s\n", camera->getFps(), camera->getThrownFrames(), WiFi.localIP().toString().c_str());
+        info("FPS: %d, Tags: %d, Thrown: %d, IP: %s, Heap: %d\n", camera->getFps(), tags_detected, camera->getThrownFrames(), WiFi.localIP().toString().c_str(), ESP.getFreeHeap());
         last_print = millis();
     }
 }

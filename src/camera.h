@@ -17,11 +17,8 @@ typedef struct
 
     // The corners of the tag in image pixel coordinates. These always
     // wrap counter-clock wise around the tag.
-    point_2f x1;
-    point_2f y1;
-    point_2f x2;
-    point_2f y2;
-} tag_position;
+    point_2f p[4];
+}__attribute__((packed)) tag_position;
 
 
 class Camera
@@ -32,6 +29,7 @@ class Camera
         void capture();
         int getFps();
         uint32_t getThrownFrames();
+        virtual uint8_t getTagsDetected(tag_position* tags) = 0;
 
     protected:
         bool m_isInitialized;
@@ -39,6 +37,8 @@ class Camera
         virtual bool doInit() = 0;
         virtual bool doCapture() = 0;
         virtual const char* name() = 0;
+        tag_position m_tags_detected[10];
+        uint8_t m_nbr_of_tags_detected;
 
     private:
         int m_fps_counter;

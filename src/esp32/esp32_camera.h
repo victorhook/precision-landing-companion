@@ -12,10 +12,14 @@
 class CameraESP32 : public Camera {
 public:
     using Camera::Camera;
-    bool doInit();
-    bool doCapture();
+    uint8_t getTagsDetected(tag_position* tags) override;
+
+protected:
+    bool doInit() override;
+    bool doCapture() override;
+    const char* name() override;
+
     void sendImageOverUDP();
-    const char* name();
 
 private:
     camera_fb_t* buffers[2];  // ✅ Double buffer for frames

@@ -1,11 +1,13 @@
 #include "esp32_camera.h"
 
+#include "img_converters.h"
 #include "esp_camera.h"
 #include <WiFi.h>
 #define CAMERA_MODEL_XIAO_ESP32S3 // Has PSRAM
 #include "camera_pins.h"
 
 #include "esp32/esp32_transport_udp.h"
+
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -42,11 +44,11 @@ bool CameraESP32::doInit()
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
 
-    config.frame_size = FRAMESIZE_VGA;
+    config.frame_size = FRAMESIZE_240X240;
     config.pixel_format = PIXFORMAT_GRAYSCALE; // Required for AprilTag processing
     config.grab_mode = CAMERA_GRAB_LATEST; // Has to be in this mode, or detection will be lag
     config.fb_location = CAMERA_FB_IN_PSRAM;
-    config.fb_count = 2;
+    config.fb_count = 3;
 
     // camera init
     esp_err_t err = esp_camera_init(&config);
@@ -96,15 +98,15 @@ bool CameraESP32::doInit()
 
 
      // ✅ Start FreeRTOS UDP sender task
-     xTaskCreatePinnedToCore(
-        udpSenderTask,  // Task function
-        "UDP_Sender",   // Task name
-        4096,           // Stack size (4KB)
-        this,           // Pass CameraESP32 instance
-        1,              // Priority (1 = Low)
-        &udpTaskHandle, // Task handle
-        1               // Pin to core 1
-    );
+    // xTaskCreatePinnedToCore(
+    //    udpSenderTask,  // Task function
+    //    "UDP_Sender",   // Task name
+    //    4096,           // Stack size (4KB)
+    //    this,           // Pass CameraESP32 instance
+    //    1,              // Priority (1 = Low)
+    //    &udpTaskHandle, // Task handle
+    //    1               // Pin to core 1
+    //);
     bufferMutex = xSemaphoreCreateMutex();
     buffers[0] = NULL;
     buffers[1] = NULL;
@@ -121,6 +123,77 @@ bool CameraESP32::doCapture()
     {
         return false;
     }
+
+
+
+    image_u8_t im = {
+        .width = (int32_t) fb->width,
+        .height = (int32_t) fb->height,
+        .stride = (int32_t) fb->width,
+        .buf = fb->buf
+    };
+  
+    // Detect
+    zarray_t *detections = apriltag_detector_detect(td, &im);
+
+    m_nbr_of_tags_detected = zarray_size(detections);
+    if (m_nbr_of_tags_detected > 0)
+    {
+        printf("Detections: ");
+        for (int i = 0; i < m_nbr_of_tags_detected; i++) {
+            apriltag_detection_t *det;
+            zarray_get(detections, i, &det);
+            
+            tag_position* tag = &m_tags_detected[i];
+
+            for (int point = 0; point < 4; point++)
+            {
+                tag->p[point].x = det->p[point][0];
+                tag->p[point].y = det->p[point][1];
+            }
+            tag->center.x = det->c[0];
+            tag->center.y = det->c[1];
+            printf("%d ", det->id);
+        }
+        printf("\n");
+    }
+    else
+    {
+        //printf("No tag detected\n");
+    }
+
+
+    // Send the front buffer 
+    uint32_t t0 = micros();
+
+    uint8_t *jpeg_buf = NULL;
+    size_t jpeg_len = 0;
+
+    bool success = fmt2jpg(fb->buf, fb->len, fb->width, fb->height, PIXFORMAT_GRAYSCALE, 10, &jpeg_buf, &jpeg_len);
+    if (!success)
+    {
+        printf("JPEG compression failed");
+        return false;
+    }
+
+    const uint16_t CHUNK_SIZE = 1024;  // UDP max safe payload size
+    uint32_t total_size = jpeg_len;
+    uint32_t num_chunks = (total_size / CHUNK_SIZE) + (total_size % CHUNK_SIZE ? 1 : 0);
+
+    // Send image in chunks
+    for (uint32_t i = 0; i < num_chunks; i++)
+    {
+        uint32_t offset = i * CHUNK_SIZE;
+        uint32_t chunk_size = (offset + CHUNK_SIZE > total_size) ? (total_size - offset) : CHUNK_SIZE;
+        
+        udp.writeBytes(jpeg_buf + offset, chunk_size);
+    }
+    uint32_t tx_dt_us = micros() - t0;
+
+    free(jpeg_buf);
+    esp_camera_fb_return(fb);
+
+    return true;
 
     // Put image to back buffer if it's empty
     if (backBufferEmpty(pdMS_TO_TICKS(1)))
@@ -164,37 +237,53 @@ void CameraESP32::udpSenderTask(void* arg)
         }
 
         image_u8_t im = {
-            .width = fb->width,
-            .height = fb->height,
-            .stride = fb->width,
+            .width = (int32_t) fb->width,
+            .height = (int32_t) fb->height,
+            .stride = (int32_t) fb->width,
             .buf = fb->buf
-          };
+        };
       
         // Detect
         zarray_t *detections = apriltag_detector_detect(self->td, &im);
-        bool tagDetected = zarray_size(detections) > 0;
 
-        if (tagDetected)
+        self->m_nbr_of_tags_detected = zarray_size(detections);
+        if (self->m_nbr_of_tags_detected > 0)
         {
             printf("Detections: ");
-            for (int i = 0; i < zarray_size(detections); i++) {
+            for (int i = 0; i < self->m_nbr_of_tags_detected; i++) {
                 apriltag_detection_t *det;
                 zarray_get(detections, i, &det);
+                
+                tag_position* tag = &self->m_tags_detected[i];
+
+                for (int point = 0; point < 4; point++)
+                {
+                    tag->p[point].x = det->p[point][0];
+                    tag->p[point].y = det->p[point][1];
+                }
+                tag->center.x = det->c[0];
+                tag->center.y = det->c[1];
                 printf("%d ", det->id);
             }
             printf("\n");
         }
         else
         {
-            printf("No tag detected\n");
+            //printf("No tag detected\n");
         }
 
 
         // Send the front buffer 
-        //uint32_t t0 = micros();
-        //self->sendFrontBuffer();
-        //uint32_t tx_dt_us = micros() - t0;
+        uint32_t t0 = micros();
+        self->sendFrontBuffer();
+        uint32_t tx_dt_us = micros() - t0;
     }
+}
+
+uint8_t CameraESP32::getTagsDetected(tag_position* tags)
+{
+    memcpy(tags, &m_tags_detected, (m_nbr_of_tags_detected*sizeof(tag_position)));
+    return m_nbr_of_tags_detected;
 }
 
 void CameraESP32::sendFrontBuffer()
@@ -207,8 +296,19 @@ void CameraESP32::sendFrontBuffer()
         return;
     }
 
+
+    uint8_t *jpeg_buf = NULL;
+    size_t jpeg_len = 0;
+
+    bool success = fmt2jpg(fb->buf, fb->len, fb->width, fb->height, PIXFORMAT_GRAYSCALE, 5, &jpeg_buf, &jpeg_len);
+    if (!success)
+    {
+        printf("JPEG compression failed");
+        return;
+    }
+
     const uint16_t CHUNK_SIZE = 1024;  // UDP max safe payload size
-    uint32_t total_size = fb->len;
+    uint32_t total_size = jpeg_len;
     uint32_t num_chunks = (total_size / CHUNK_SIZE) + (total_size % CHUNK_SIZE ? 1 : 0);
 
     // Send image in chunks
@@ -217,8 +317,9 @@ void CameraESP32::sendFrontBuffer()
         uint32_t offset = i * CHUNK_SIZE;
         uint32_t chunk_size = (offset + CHUNK_SIZE > total_size) ? (total_size - offset) : CHUNK_SIZE;
         
-        udp.writeBytes(fb->buf + offset, chunk_size);
+        udp.writeBytes(jpeg_buf + offset, chunk_size);
     }
+    free(jpeg_buf);
 }
 
 bool CameraESP32::backBufferEmpty(const TickType_t timeoutTicks)

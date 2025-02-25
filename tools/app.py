@@ -7,16 +7,33 @@ from flask import Flask, Response, render_template, jsonify
 from flask_cors import CORS
 import logging
 
-from telemetry_server import TelemetryServer
-from threading import Thread
+from telemetry_server import TelemetryServer, TelemetryPacket, TelemetryPacketSubscriber, TelemetryTags, TelemetryPacketType
+from threading import Thread, Lock
 
 UDP_IP = "0.0.0.0"
 UDP_PORT = 9095
 TELEMETRY_IP = '192.168.0.202'
 TELEMETRY_PORT = 9096
 
+class TagHandler(TelemetryPacketSubscriber):
+
+    def __init__(self) -> None:
+        self._tag_lock = Lock()
+        self._tags: TelemetryTags = None
+
+    def handle_telemetry_packet(self, packet: TelemetryTags) -> None:
+        with self._tag_lock:
+            self._tags = packet
+
+    def get_tags(self) -> TelemetryTags:
+        with self._tag_lock:
+            return self._tags
+
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 telemetry_server = TelemetryServer()
+tag_handler = TagHandler()
+telemetry_server.subscribe(TelemetryPacketType.TAGS, tag_handler)
 app = Flask(__name__)
 CORS(app)
 
@@ -27,6 +44,29 @@ log.setLevel(logging.WARNING)  # Only show warnings & errors
 
 def udp_video_stream():
     buffer = b""
+
+    def draw_tag_rectangles(img):
+        # ✅ Get detected tags from telemetry
+        global tag_handler
+        detected_tags = tag_handler.get_tags()  # Replace with your actual function
+
+        for tag in detected_tags.tags:
+            # ✅ Extract coordinates from `Point2F`
+            x_coords = [tag.p1.x, tag.p2.x, tag.p3.x, tag.p4.x]
+            y_coords = [tag.p1.y, tag.p2.y, tag.p3.y, tag.p4.y]
+
+            # ✅ Find top-left (min X, min Y) and bottom-right (max X, max Y)
+            pt1 = (int(min(x_coords)), int(min(y_coords)))  # Top-left
+            pt2 = (int(max(x_coords)), int(max(y_coords)))  # Bottom-right
+
+            # ✅ Draw rectangle
+            cv2.rectangle(img, pt1, pt2, (0, 255, 0), 2)
+
+            # ✅ Draw text with tag ID
+            #cv2.putText(img, f"ID: {tag.id}", (pt1[0], pt1[1] - 10),
+            #            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+
     while True:
         packet, _ = sock.recvfrom(4096)
         buffer += packet
@@ -39,6 +79,8 @@ def udp_video_stream():
             img = cv2.imdecode(frame, cv2.IMREAD_COLOR)
 
             if img is not None:
+                draw_tag_rectangles(img)
+
                 _, jpeg = cv2.imencode(".jpg", img)
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')

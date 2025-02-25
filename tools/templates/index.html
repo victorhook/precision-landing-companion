@@ -22,13 +22,15 @@
             display: flex;
             gap: 20px;
             margin-top: 20px;
+            width: 100%;
+            justify-content: space-between; /* ✅ Ensures log console takes available space */
         }
         .video {
             margin-bottom: 20px;
         }
         table {
             border-collapse: collapse;
-            width: 300px;
+            width: 400px;  /* ✅ Keeps table width fixed */
             background: white;
             color: black;
         }
@@ -38,8 +40,9 @@
             text-align: left;
         }
         .log-console {
-            width: 400px;
-            height: 300px;
+            flex-grow: 1;  /* ✅ Allows log console to take remaining space */
+            max-width: 1000px;  /* ✅ Prevents it from becoming too large */
+            height: 400px;  /* ✅ Slightly increased height */
             background: black;
             color: white;
             border: 1px solid gray;
