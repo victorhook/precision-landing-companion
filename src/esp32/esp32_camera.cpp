@@ -10,6 +10,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
+#include "tagStandard41h12.h"
+#include "tag16h5.h"
+
 
 TransportUDP_ESP32 udp("192.168.0.195", 9095);
 
@@ -38,37 +41,12 @@ bool CameraESP32::doInit()
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
-    config.frame_size = FRAMESIZE_UXGA;
-    config.pixel_format = PIXFORMAT_JPEG;  // for streaming
-    //config.pixel_format = PIXFORMAT_RGB565; // for face detection/recognition
-    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
-    config.fb_location = CAMERA_FB_IN_PSRAM;
-    config.jpeg_quality = 12;
-    config.fb_count = 1;
 
-    // if PSRAM IC present, init with UXGA resolution and higher JPEG quality
-    //                      for larger pre-allocated frame buffer.
-    if (config.pixel_format == PIXFORMAT_JPEG)
-    {
-        if (psramFound())
-        {
-            config.jpeg_quality = 10;
-            config.fb_count = 2;
-            config.grab_mode = CAMERA_GRAB_LATEST;
-        } else
-        {
-            // Limit the frame size when PSRAM is not available
-            config.frame_size = FRAMESIZE_SVGA;
-            config.fb_location = CAMERA_FB_IN_DRAM;
-        }
-    }
-    else {
-        // Best option for face detection/recognition
-        config.frame_size = FRAMESIZE_240X240;
-        #if CONFIG_IDF_TARGET_ESP32S3
-            config.fb_count = 2;
-        #endif
-    }
+    config.frame_size = FRAMESIZE_VGA;
+    config.pixel_format = PIXFORMAT_GRAYSCALE; // Required for AprilTag processing
+    config.grab_mode = CAMERA_GRAB_LATEST; // Has to be in this mode, or detection will be lag
+    config.fb_location = CAMERA_FB_IN_PSRAM;
+    config.fb_count = 2;
 
     // camera init
     esp_err_t err = esp_camera_init(&config);
@@ -91,6 +69,31 @@ bool CameraESP32::doInit()
     {
         s->set_framesize(s, FRAMESIZE_QVGA);
     }
+
+
+    // Tag detection
+    tf = tag16h5_create();
+    //tf = tagStandard41h12_create();
+
+    // Create AprilTag detector object
+    td = apriltag_detector_create();
+    
+    // Add tag family to the detector
+    apriltag_detector_add_family(td, tf);
+
+    // Tag detector configs
+    // quad_sigma is Gaussian blur's sigma
+    // quad_decimate: small number = faster but cannot detect small tags
+    //                big number = slower but can detect small tags (or tag far away)
+    // With quad_sigma = 1.0 and quad_decimate = 4.0, ESP32-CAM can detect 16h5 tag
+    // from the distance of about 1 meter (tested with tag on screen. not on paper)
+    td->quad_sigma = 1.0;
+    td->quad_decimate = 4.0;
+    td->refine_edges = 1;
+    td->decode_sharpening = 0.25;
+    td->nthreads = 1;
+    td->debug = 0;
+
 
      // ✅ Start FreeRTOS UDP sender task
      xTaskCreatePinnedToCore(
@@ -152,9 +155,44 @@ void CameraESP32::udpSenderTask(void* arg)
         // Once the back buffer has been filled, we'll swap it to frot
         self->swapBuffers();
 
+        camera_fb_t* fb = self->getActiveBuffer();
+
+        if (!fb || fb->len == 0)
+        {
+            // Should never occur
+            return;
+        }
+
+        image_u8_t im = {
+            .width = fb->width,
+            .height = fb->height,
+            .stride = fb->width,
+            .buf = fb->buf
+          };
+      
+        // Detect
+        zarray_t *detections = apriltag_detector_detect(self->td, &im);
+        bool tagDetected = zarray_size(detections) > 0;
+
+        if (tagDetected)
+        {
+            printf("Detections: ");
+            for (int i = 0; i < zarray_size(detections); i++) {
+                apriltag_detection_t *det;
+                zarray_get(detections, i, &det);
+                printf("%d ", det->id);
+            }
+            printf("\n");
+        }
+        else
+        {
+            printf("No tag detected\n");
+        }
+
+
         // Send the front buffer 
         //uint32_t t0 = micros();
-        self->sendFrontBuffer();
+        //self->sendFrontBuffer();
         //uint32_t tx_dt_us = micros() - t0;
     }
 }

@@ -48,18 +48,18 @@ void loop()
     if (frame % 100 == 0)
     {
         //mavcom.update_10hz();
+        telemetry.update();
     }
     if (frame % 1000 == 0)
     {
         //mavcom.update_1hz();
-        telemetry.update();
     }
     if (frame % 33 == 0)
     {
         uint32_t t0 = micros();
         camera->capture();
         uint32_t dt = micros() - t0;
-        //printf("DT: %u us\n", dt);
+        //debug("CAM DT: %.1f ms\n", (float) dt / 1000.0);
     }
 
     print_statistics();

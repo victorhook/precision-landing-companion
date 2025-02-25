@@ -7,6 +7,8 @@
 #include <WiFi.h>
 #include "esp32_transport_udp.h"
 
+#include "apriltag.h"
+
 class CameraESP32 : public Camera {
 public:
     using Camera::Camera;
@@ -21,6 +23,9 @@ private:
     TaskHandle_t udpTaskHandle;  // ✅ FreeRTOS task for UDP sending
     SemaphoreHandle_t bufferMutex;
     uint32_t thrown_frames;
+
+    apriltag_family_t* tf;
+    apriltag_detector_t* td;
 
     static void udpSenderTask(void* arg);  // ✅ FreeRTOS task function
 
