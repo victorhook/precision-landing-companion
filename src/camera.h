@@ -34,9 +34,12 @@ class Camera
     protected:
         bool m_isInitialized;
         uint32_t m_thrown_frames;
+        virtual void initializeTagDetection() = 0;
         virtual bool doInit() = 0;
         virtual bool doCapture() = 0;
         virtual const char* name() = 0;
+        virtual void sendImageOverUDP(const uint8_t* buf, const uint32_t len) = 0;
+        virtual void detectTagsInImage(const uint32_t width, const uint32_t height, const uint32_t stride, const uint8_t* buf) = 0;
         tag_position m_tags_detected[10];
         uint8_t m_nbr_of_tags_detected;
 

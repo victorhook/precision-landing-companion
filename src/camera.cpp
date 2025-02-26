@@ -12,6 +12,9 @@ Camera::Camera()
 bool Camera::init()
 {
    m_isInitialized = doInit();
+
+   initializeTagDetection();
+
    return m_isInitialized;
 }
 
