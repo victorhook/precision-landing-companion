@@ -14,6 +14,8 @@ class TelemetryPacketType(IntEnum):
     STATUS = 0x01
     TAGS = 0x02
     LOG = 0x03
+    TELEMETRY_CMD_SET_DETECTION_PARAMS = 0x30
+    TELEMETRY_CMD_UNKNOWN = 0xFF
 
 @dataclass
 class TelemetryLog(TelemetryPacket):
@@ -23,7 +25,26 @@ class TelemetryLog(TelemetryPacket):
 
     _fmt = '<BI'
 
+@dataclass
+class TelemetryCommandPacket(TelemetryPacket):
 
+    def to_bytes(self) -> bytes:
+        payload = super().to_bytes()
+        header = struct.pack('BB', self._cmd, len(payload))
+        return header + payload
+    
+    _cmd = TelemetryPacketType.TELEMETRY_CMD_UNKNOWN
+
+
+@dataclass
+class TelemetryCommandSetDetectionParams(TelemetryCommandPacket):
+    quad_decimate: float
+    quad_sigma: float
+    refine_edges: bool
+    decode_sharpening: float
+
+    _fmt = '<ffBf'
+    _cmd = TelemetryPacketType.TELEMETRY_CMD_SET_DETECTION_PARAMS
 
 @dataclass
 class Point2F:
@@ -81,6 +102,7 @@ class TelemetryServer:
         self._queue = Queue(maxsize = 500)
         self._discarded_packets = 0
         self._subscribers: t.Dict[TelemetryPacketType, TelemetryPacketSubscriber] = dict()
+        self._tx = Queue()
 
     def subscribe(self, packet_type: TelemetryPacketType, subscriber: TelemetryPacketSubscriber) -> None:
         if packet_type not in self._subscribers:
@@ -103,6 +125,9 @@ class TelemetryServer:
         except Empty:
             return None
         
+    def send_packet(self, packet: TelemetryPacket) -> None:
+        self._tx.put(packet)
+
     def _connect(self, ip: str, port: int) -> bool:
         try:    
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -214,6 +239,15 @@ class TelemetryServer:
                 except Full:
                     # If the queue is full, we'll just discard the packets
                     self._discarded_packets += 1
+
+                # At last, we'll send pending TX packets
+                while not self._tx.empty():
+                    try:
+                        pkt = self._tx.get()
+                        print(f'TX: {pkt} ({" ".join(hex(a)[2:].zfill(2) for a in pkt.to_bytes())})')
+                        self._socket.send(pkt.to_bytes())
+                    except Exception as e:
+                        print(f'Failed to send packet: {e}')
 
     def _timed_out(self) -> None:
         print('Timed out reading data, assuming client disconnected, closing socket and re-trying to open')

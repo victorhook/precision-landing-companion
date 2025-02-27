@@ -17,6 +17,7 @@ typedef enum : uint8_t
     TELEMETRY_PACKET_STATUS = 0x01,
     TELEMETRY_PACKET_TAGS   = 0x02,
     TELEMETRY_PACKET_LOG    = 0x03,
+    TELEMETRY_CMD_SET_DETECTION_PARAMS = 0x30,
 } telemetry_packet_type_t;
 
 typedef enum : uint8_t
@@ -27,13 +28,16 @@ typedef enum : uint8_t
     LOG_LEVEL_ERROR   = 3,
 } log_level_t;
 
-
 // -- TELEMTRY_START START -- //
 typedef struct
 {
     uint32_t upTimeMs;
     uint8_t  cameraFps;
     uint32_t freeHeap;
+    float quad_decimate;
+    float quad_sigma;
+    bool  refine_edges;
+    float decode_sharpening;
 }__attribute__((packed)) telemetry_status_t;
 // -- TELEMTRY_START END -- //
 
@@ -51,6 +55,32 @@ typedef struct
     uint8_t* data;
 }__attribute__((packed)) telemetry_packet_t;
 
+typedef struct
+{
+    telemetry_packet_type_t type;
+    uint8_t len;
+    uint8_t data[255];
+}__attribute__((packed)) telemetry_rx_packet_t;
+
+
+class TelemetryPacketParser
+{
+    public:
+        TelemetryPacketParser();
+        bool parseByte(const uint8_t byte, telemetry_rx_packet_t* packet);
+    private:
+        typedef enum
+        {
+            PARSE_STATE_TYPE,
+            PARSE_STATE_LEN,
+            PARSE_STATE_DATA
+        } parse_state_t;
+        parse_state_t parseState;
+        telemetry_rx_packet_t rxPacket;
+        uint32_t parsedDataBytes;
+        void resetParseState();
+};
+
 class Telemetry
 {
     public:
@@ -65,6 +95,9 @@ class Telemetry
         telemetry_status_t status;
         HAL_Queue<telemetry_log_t>* logQueue;
         telemetry_log_t log_tx;
+        TelemetryPacketParser telemParser;
+
+        void handleTelemetryCommand(const telemetry_rx_packet_t* pkt);
 };
 
 #endif

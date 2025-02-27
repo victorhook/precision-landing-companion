@@ -121,7 +121,7 @@ bool CameraESP32::configureCamera()
     config.grab_mode = CAMERA_GRAB_LATEST; // Has to be in this mode, or detection will be lag
     config.fb_location = CAMERA_FB_IN_PSRAM;
     config.jpeg_quality = 10;
-    config.fb_count = 3;
+    config.fb_count = 2;
 
     // camera init
     esp_err_t err = esp_camera_init(&config);
@@ -146,12 +146,7 @@ void CameraESP32::initializeTagDetection()
     apriltag_detector_add_family(td, tf);
 
     // Tag detector configs
-    // quad_sigma is Gaussian blur's sigma
-    // quad_decimate: small number = faster but cannot detect small tags
-    //                big number = slower but can detect small tags (or tag far away)
-    // With quad_sigma = 1.0 and quad_decimate = 4.0, ESP32-CAM can detect 16h5 tag
-    // from the distance of about 1 meter (tested with tag on screen. not on paper)
-    td->quad_sigma = 1.0;
+    td->quad_sigma = 0.6;
     td->quad_decimate = 4.0;
     td->refine_edges = 1;
     td->decode_sharpening = 0.25;
@@ -163,9 +158,9 @@ void CameraESP32::initializeTagDetection()
 void CameraESP32::detectTagsInImage(const uint32_t width, const uint32_t height, const uint32_t stride, const uint8_t* buf)
 {
     image_u8_t im = {
-        .width = width,
-        .height = height,
-        .stride = stride,
+        .width = (int32_t) width,
+        .height = (int32_t) height,
+        .stride = (int32_t) stride,
         .buf = (uint8_t*) buf
     };
   
@@ -200,4 +195,23 @@ void CameraESP32::detectTagsInImage(const uint32_t width, const uint32_t height,
 
     // Free memory
     apriltag_detections_destroy(detections);
+}
+
+void CameraESP32::setTagDetectionParams(const tag_detection_params_t* params)
+{
+    td->quad_decimate = params->quad_decimate;
+    td->quad_sigma = params->quad_sigma;
+    td->refine_edges = params->refine_edges;
+    td->decode_sharpening = params->decode_sharpening;
+}
+
+tag_detection_params_t CameraESP32::getTagDetectionParams()
+{
+    return
+    {
+        .quad_decimate = td->quad_decimate,
+        .quad_sigma = td->quad_sigma,
+        .refine_edges = td->refine_edges,
+        .decode_sharpening = td->decode_sharpening,
+    };
 }

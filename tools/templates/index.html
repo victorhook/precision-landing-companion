@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telemetry Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Telemetry & Logs</title>
 </head>
 <body>
     <style>
@@ -22,15 +22,12 @@
             display: flex;
             gap: 20px;
             margin-top: 20px;
+            justify-content: space-between;
             width: 100%;
-            justify-content: space-between; /* ✅ Ensures log console takes available space */
-        }
-        .video {
-            margin-bottom: 20px;
         }
         table {
             border-collapse: collapse;
-            width: 400px;  /* ✅ Keeps table width fixed */
+            width: 300px;
             background: white;
             color: black;
         }
@@ -40,9 +37,9 @@
             text-align: left;
         }
         .log-console {
-            flex-grow: 1;  /* ✅ Allows log console to take remaining space */
-            max-width: 1000px;  /* ✅ Prevents it from becoming too large */
-            height: 400px;  /* ✅ Slightly increased height */
+            flex-grow: 1;
+            max-width: 700px;
+            height: 400px;
             background: black;
             color: white;
             border: 1px solid gray;
@@ -52,13 +49,36 @@
             font-size: 14px;
             white-space: pre-wrap;
         }
-        .log-debug { color: lightgray; }
-        .log-info { color: cyan; }
-        .log-warning { color: yellow; }
-        .log-error { color: red; }
+        .form-container {
+            margin-top: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            color: black;
+        }
+        .form-container label {
+            display: block;
+            margin-top: 8px;
+        }
+        .form-container input {
+            width: 100px;
+            padding: 5px;
+            margin-top: 5px;
+        }
+        .form-container button {
+            margin-top: 15px;
+            padding: 8px 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .form-container button:hover {
+            background-color: #218838;
+        }
     </style>
 
-    <!-- ✅ Camera Image (Restored) -->
+    <!-- ✅ Camera Image -->
     <img class="video" src="http://127.0.0.1:8080/video" width="640" height="480">
 
     <div class="container">
@@ -70,8 +90,28 @@
             <tbody></tbody>
         </table>
 
+
+        <!-- ✅ Editable Form for Detection Parameters -->
+        <div class="form-container">
+            <h3>Set Detection Parameters</h3>
+            <form id="detection-form">
+                <label>Quad Decimate: <input type="number" id="quad_decimate" step="0.1"></label>
+                <label>Quad Sigma: <input type="number" id="quad_sigma" step="0.1"></label>
+                <label>Refine Edges: 
+                    <select id="refine_edges">
+                        <option value="true">True</option>
+                        <option value="false">False</option>
+                    </select>
+                </label>
+                <label>Decode Sharpening: <input type="number" id="decode_sharpening" step="0.1"></label>
+                <button type="button" onclick="sendDetectionParams()">Set Parameters</button>
+            </form>
+        </div>
+
         <!-- ✅ Log Console -->
-        <div class="log-console" id="log-console"></div>
+        <div class="log-console" id="log-console">
+            <h3>Log Console</h3>
+        </div>
     </div>
 
     <script>
@@ -79,15 +119,14 @@
             try {
                 const response = await fetch("http://127.0.0.1:8080/telemetry");
                 const data = await response.json();
-                if (!Array.isArray(data) || data.length === 0) return; // ✅ Prevent issues with empty JSON
+                if (!Array.isArray(data) || data.length === 0) return;
 
-                
                 data.forEach(packet => {
-                    console.log(packet)
                     if (packet.type === "Status") {
                         updateTelemetryTable(packet);
+                        updateDetectionForm(packet);
                     } else if (packet.type === "Log") {
-                        addLogMessage(packet);
+                        updateLogConsole(packet);
                     }
                 });
             } catch (error) {
@@ -97,10 +136,10 @@
 
         function updateTelemetryTable(data) {
             const tableBody = document.getElementById("telemetry-table").querySelector("tbody");
-            tableBody.innerHTML = ""; // ✅ Clear old data before updating
+            tableBody.innerHTML = "";
 
             Object.entries(data).forEach(([key, value]) => {
-                if (key !== "type") { // ✅ Don't include "type" field in table
+                if (key !== "type") {
                     const row = document.createElement("tr");
                     row.innerHTML = `<td>${key}</td><td>${value}</td>`;
                     tableBody.appendChild(row);
@@ -108,27 +147,68 @@
             });
         }
 
-        function addLogMessage(log) {
-            const logConsole = document.getElementById("log-console");
-            const logEntry = document.createElement("div");
+        let isEditing = false;  // ✅ Tracks if user is editing
 
-            const levelClass = {
-                0: "log-debug",
-                1: "log-info",
-                2: "log-warning",
-                3: "log-error"
-            }[log.level] || "log-info"; // ✅ Default to info if level is unknown
+        function updateDetectionForm(data) {
+            if (isEditing) return;  // ✅ Do not overwrite if user is editing
 
-            logEntry.className = levelClass;
-            logEntry.textContent = `[${log.timestamp}] ${log.msg}`;
-
-            logConsole.appendChild(logEntry);
-
-            // ✅ Auto-scroll to latest log
-            logConsole.scrollTop = logConsole.scrollHeight;
+            document.getElementById("quad_decimate").value = data.quad_decimate || 1.0;
+            document.getElementById("quad_sigma").value = data.quad_sigma || 0.0;
+            document.getElementById("refine_edges").value = data.refine_edges ? "true" : "false";
+            document.getElementById("decode_sharpening").value = data.decode_sharpening || 0.0;
         }
 
-        setInterval(fetchTelemetry, 100); // ✅ Poll every 100ms (10Hz)
+        // ✅ Detect when user starts editing
+        document.querySelectorAll("#detection-form input, #detection-form select").forEach(input => {
+            input.addEventListener("focus", () => isEditing = true);
+            input.addEventListener("blur", () => setTimeout(() => isEditing = false, 500));  // Small delay before allowing updates
+        });
+
+        function updateLogConsole(data) {
+            const logConsole = document.getElementById("log-console");
+            const logEntry = document.createElement("div");
+            logEntry.textContent = `[${new Date(data.timestamp * 1000).toLocaleTimeString()}] ${data.msg}`;
+            logEntry.style.color = getLogColor(data.level);
+            logConsole.appendChild(logEntry);
+            logConsole.scrollTop = logConsole.scrollHeight; // Auto-scroll
+        }
+
+        function getLogColor(level) {
+            switch (level) {
+                case "DEBUG": return "lightgray";
+                case "INFO": return "white";
+                case "WARNING": return "yellow";
+                case "ERROR": return "red";
+                default: return "white";
+            }
+        }
+
+        async function sendDetectionParams() {
+            const params = {
+                quad_decimate: parseFloat(document.getElementById("quad_decimate").value),
+                quad_sigma: parseFloat(document.getElementById("quad_sigma").value),
+                refine_edges: document.getElementById("refine_edges").value === "true",
+                decode_sharpening: parseFloat(document.getElementById("decode_sharpening").value)
+            };
+
+            try {
+                const response = await fetch("http://127.0.0.1:8080/set_detection_params", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(params)
+                });
+                if (response.ok) {
+                    console.log("Parameters updated successfully!");
+                } else {
+                    alert("Failed to update parameters.");
+                }
+            } catch (error) {
+                console.error("Error sending parameters:", error);
+            }
+        }
+
+        setInterval(fetchTelemetry, 1000);
     </script>
+
 </body>
 </html>

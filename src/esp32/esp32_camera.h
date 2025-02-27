@@ -13,6 +13,8 @@ class CameraESP32 : public Camera {
 public:
     using Camera::Camera;
     uint8_t getTagsDetected(tag_position* tags) override;
+    void setTagDetectionParams(const tag_detection_params_t* params) override;
+    tag_detection_params_t getTagDetectionParams() override;
 
 protected:
     bool doInit() override;

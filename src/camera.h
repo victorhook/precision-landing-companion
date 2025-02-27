@@ -9,7 +9,6 @@ typedef struct
     float y;
 } point_2f;
 
-
 typedef struct
 {
     // The center of the detection in image pixel coordinates.
@@ -21,6 +20,15 @@ typedef struct
 }__attribute__((packed)) tag_position;
 
 
+typedef struct
+{
+    float quad_decimate;
+    float quad_sigma;
+    bool  refine_edges;
+    float decode_sharpening;
+}__attribute__((packed)) tag_detection_params_t;
+
+
 class Camera
 {
     public:
@@ -30,6 +38,8 @@ class Camera
         int getFps();
         uint32_t getThrownFrames();
         virtual uint8_t getTagsDetected(tag_position* tags) = 0;
+        virtual void setTagDetectionParams(const tag_detection_params_t* params) = 0;
+        virtual tag_detection_params_t getTagDetectionParams() = 0;
 
     protected:
         bool m_isInitialized;

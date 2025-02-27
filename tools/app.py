@@ -3,11 +3,11 @@
 import cv2
 import socket
 import numpy as np
-from flask import Flask, Response, render_template, jsonify
+from flask import Flask, Response, render_template, jsonify, request
 from flask_cors import CORS
 import logging
 
-from telemetry_server import TelemetryServer, TelemetryPacket, TelemetryPacketSubscriber, TelemetryTags, TelemetryPacketType
+from telemetry_server import TelemetryServer, TelemetryPacket, TelemetryPacketSubscriber, TelemetryTags, TelemetryPacketType, TelemetryCommandSetDetectionParams
 from threading import Thread, Lock
 
 UDP_IP = "0.0.0.0"
@@ -29,6 +29,7 @@ class TagHandler(TelemetryPacketSubscriber):
         with self._tag_lock:
             return self._tags
 
+fps = 0
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 telemetry_server = TelemetryServer()
@@ -66,6 +67,10 @@ def udp_video_stream():
             #cv2.putText(img, f"ID: {tag.id}", (pt1[0], pt1[1] - 10),
             #            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
+    def draw_text(img):
+        global fps
+        cv2.putText(img, f"FPS: {fps}", (10, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     while True:
         packet, _ = sock.recvfrom(4096)
@@ -81,10 +86,21 @@ def udp_video_stream():
             if img is not None:
                 draw_tag_rectangles(img)
 
+                draw_text(img)
+
                 _, jpeg = cv2.imencode(".jpg", img)
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
                 buffer = b""  # Reset buffer
+
+@app.route("/set_detection_params", methods=["POST"])
+def set_detection_params():
+    try:
+        data = request.get_json()
+        telemetry_server.send_packet(TelemetryCommandSetDetectionParams(**data))
+        return jsonify({"status": "success", "message": "Parameters updated"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
 
 @app.route('/video')
 def video_feed():   
@@ -94,6 +110,10 @@ def video_feed():
 def telemetry():
     log.setLevel(logging.ERROR)  # ✅ Hide normal logs, only show errors
     new_packets = telemetry_server.get_all_packets_no_block()
+    for packet in new_packets:
+        if hasattr(packet, 'cameraFps'):
+            global fps
+            fps = packet.cameraFps
     return jsonify([packet.to_json() for packet in new_packets])
 
 @app.route('/')
