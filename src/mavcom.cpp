@@ -1,20 +1,17 @@
 #include "mavcom.h"
+#include "log.h"
 
-#ifdef LINUX
-    #include "linux/linux_transport_udp.h"
-    #include "linux/linux_transport_tcp.h"
-#endif
 
 MavCom::MavCom()
+: proxyPort(14550), proxyIsActive(false)
 {
     m_ap = new TRANSPORT_AP_CLASS();
     m_udp = new TRANSPORT_UDP_CLASS(proxyPort);
 }
 
-void MavCom::init()
+void MavCom::init(Telemetry* telemetry)
 {
-    // Start TCP connection to AP
-    m_tcp->init();
+    this->telemetry = telemetry;
 
     // Open communication to AP
     m_ap->init();
@@ -23,6 +20,7 @@ void MavCom::init()
 
 void MavCom::update_1hz()
 {
+    activateProxyIfNeeded();
     mavlink_message_t msg;
     mavlink_heartbeat_t heartbeat = 
     {
@@ -42,11 +40,14 @@ void MavCom::update_1hz()
 
 void MavCom::update_10hz()
 {
+    activateProxyIfNeeded();
 
 }
 
 void MavCom::update_100hz()
 {
+    activateProxyIfNeeded();
+
     // Handles mavlink communication
     // 1. Read from Ardupilot
     //   -> Handle message if handler exists for given message
@@ -90,6 +91,27 @@ void MavCom::update_100hz()
 }
 
 // -- Private -- //
+void MavCom::activateProxyIfNeeded()
+{
+    if (!proxyIsActive && telemetry->clientConnected())
+    {
+        // Proxy is active yet, but we've got a connection on the telemetry,
+        // let's start the mavproxy server
+
+        if (m_udp != NULL)
+        {
+            // Close current activity
+            m_udp->deInit();
+        }
+
+        info("Starting mavproxy to %s:%d\n", proxyIP, proxyPort);
+        proxyIsActive = true;
+        telemetry->getClientIP(proxyIP);
+        m_udp->init(proxyIP);
+    }
+    
+}
+
 void MavCom::setMessageInterval()
 {
 

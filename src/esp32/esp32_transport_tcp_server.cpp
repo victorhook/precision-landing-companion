@@ -1,6 +1,7 @@
 #include "esp32_transport_tcp_server.h"
 
 #include <WiFi.h>
+#include "log.h"
 
 
 TransportTCP_Server_ESP32::TransportTCP_Server_ESP32(const int port)
@@ -60,7 +61,7 @@ uint32_t TransportTCP_Server_ESP32::writeBytes(const uint8_t *data, uint32_t len
 
 void TransportTCP_Server_ESP32::initServer()
 {
-    printf("Initializing TCP server on %s:%d\n", WiFi.localIP().toString().c_str(), port);
+    info("Initializing TCP server on %s:%d\n", WiFi.localIP().toString().c_str(), port);
     isInitialized = true;
     server.begin();
 }
@@ -87,16 +88,12 @@ void TransportTCP_Server_ESP32::receiverThread(void* arg)
             self->client = self->server.available();  // ✅ Accept a new client connection
             if (self->client) 
             {
-                printf("✅ New client connected\n");
+                info("New client connected\n");
             }
         }
 
         if (self->client.available())  // ✅ Check for incoming data
         {
-            //String data = self->client.readStringUntil('\n');  // Read incoming message
-            //Serial.print("📩 Received: ");
-            //Serial.println(data);
-            //self->client.print("ACK: " + data + "\n");  // ✅ Send back acknowledgment
         }
 
         delay(5);
@@ -114,4 +111,17 @@ void TransportTCP_Server_ESP32::flushTX()
 bool TransportTCP_Server_ESP32::clientConnected()
 {
     return (client && client.connected());
+}
+
+
+bool TransportTCP_Server_ESP32::getClientIp(char ip[17])
+{
+    if (!clientConnected())
+    {
+        ip[0] = '\0';
+        return false;
+    }
+
+    strncpy(ip, client.remoteIP().toString().c_str(), 17);
+    return true;
 }

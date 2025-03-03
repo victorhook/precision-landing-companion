@@ -123,7 +123,17 @@ void Telemetry::handleTelemetryCommand(const telemetry_rx_packet_t* pkt)
     }
 }
 
-// -- Telemtry parser -- //
+bool Telemetry::clientConnected()
+{
+    return tcpServer->clientConnected();
+}
+
+bool Telemetry::getClientIP(char ip[17])
+{
+    return tcpServer->getClientIp(ip);
+}
+
+// -- Telemetry parser -- //
 TelemetryPacketParser::TelemetryPacketParser()
 {
     resetParseState();

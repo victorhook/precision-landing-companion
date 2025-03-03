@@ -28,7 +28,9 @@ void setup()
 
     telemetry.init(camera, &targetDetector);
 
-    info("Starting main loop\n\n");
+    mavcom.init(&telemetry);
+
+    info("Starting main loop\n");
 }
 
 uint32_t frame = 0;
@@ -77,7 +79,7 @@ static void print_statistics()
 {
     tag_position tags[10];
     static uint32_t last_print = 0;
-    uint8_t tags_detected = camera->getTagsDetected(tags);
+    uint8_t tags_detected = targetDetector.getTagsDetected(tags);
     if ((millis() - last_print) > 1000)
     {
         info("FPS: %d, Tags: %d, Thrown: %d, IP: %s, Heap: %d\n", camera->getFps(), tags_detected, camera->getThrownFrames(), WiFi.localIP().toString().c_str(), ESP.getFreeHeap());

@@ -40,13 +40,16 @@ public:
 // -- Platform specific -- //
 #ifdef LINUX
     #include "linux/linux_camera.h"
+    #include "linux/linux_transport_udp.h"
+    #include "linux/linux_transport_tcp.h"
     #define PLATFORM_NAME "linux"
+
+    #define CAMERA_CLASS CameraLinux
 
     void setup();
 
     void loop();
 #else
-    #include <Arduino.h>
     #include "esp32/esp32_hal.h"
     #define PLATFORM_NAME "esp32-s3"
     #define TCP_SERVER_CLASS TransportTCP_Server_ESP32

@@ -17,6 +17,7 @@ class TransportTCP_Server_ESP32 : public TransportTCP_Server
         uint32_t writeBytes(const uint8_t *data, uint32_t len) override;
         void flushTX() override;
         bool clientConnected() override;
+        bool getClientIp(char ip[16]) override;
 
     private:
         WiFiClient client;

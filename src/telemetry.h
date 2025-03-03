@@ -89,10 +89,13 @@ class Telemetry
         void init(Camera* camera, TargetDetector* targetDetector);
         void update();
         bool sendLogMsg(const log_level_t level, const char* msg);
+        bool clientConnected();
+        bool getClientIP(char ip[17]);
 
     private:
         TransportTCP_Server* tcpServer;
         Camera* camera;
+        TargetDetector* targetDetector;
         telemetry_status_t status;
         HAL_Queue<telemetry_log_t>* logQueue;
         telemetry_log_t log_tx;
