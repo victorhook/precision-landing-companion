@@ -7,10 +7,13 @@
 // Transport
 #include "transport_tcp.h"
 #include "transport_udp.h"
+#include "transport_ap.h"
 
-
+#define AP_SYSTEM_ID    1
+#define AP_COMPONENT_ID 1
 #define MAVLINK_SYSTEM_ID    42
 #define MAVLINK_COMPONENT_ID MAV_COMP_ID_ONBOARD_COMPUTER2
+
 
 class MavCom
 {
@@ -24,8 +27,7 @@ class MavCom
     private:
         uint32_t m_lastHeartbeat;
         TransportUDP* m_udp;
-        TransportTCP* m_tcp;
-
+        TransportAP* m_ap;
 
         void setMessageInterval();
         void sendCommandInt(const uint16_t command, const uint8_t frame = 0, const float param1 = 0, const float param2 = 0, const float param3 = 0, const float param4 = 0, const float param5 = 0, const float param6 = 0, const float param7 = 0);

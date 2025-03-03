@@ -7,13 +7,8 @@
 
 MavCom::MavCom()
 {
-#ifdef LINUX
-    m_udp = new TransportUDP_Linux("127.0.0.1", 14550);
-    m_tcp = new TransportTCP_Linux("127.0.0.1", 5760);
-#else
-    //m_udp = new TransportUDP_ESP32("127.0.0.1", 14550);
-    //m_tcp = new TransportTCP_ESP32("127.0.0.1", 5760);
-#endif
+    m_ap = new TRANSPORT_AP_CLASS();
+    m_udp = new TRANSPORT_UDP_CLASS(proxyPort);
 }
 
 void MavCom::init()
@@ -21,8 +16,8 @@ void MavCom::init()
     // Start TCP connection to AP
     m_tcp->init();
 
-    // Start UDP broadcast
-    m_udp->init();
+    // Open communication to AP
+    m_ap->init();
 }
 
 
@@ -64,7 +59,7 @@ void MavCom::update_100hz()
     uint32_t rx_bytes;
 
     // Read from serial
-    rx_bytes = m_tcp->readBytes(transport_buf, 2048, 0);
+    rx_bytes = m_ap->readBytes(transport_buf, 2048, 0);
     mavlink_status_t status_serial;
     mavlink_message_t msg_serial;
 
@@ -88,7 +83,7 @@ void MavCom::update_100hz()
         if (mavlink_parse_char(1, transport_buf[i], &msg_udp, &status_udp))
         {
             uint16_t packet_len = mavlink_msg_to_send_buffer(mav_buf, &msg_udp);
-            m_tcp->writeBytes(mav_buf, packet_len);
+            m_ap->writeBytes(mav_buf, packet_len);
             //printf("[UDP] %u\n", msg_to_gcs.seq);
         }
     }
@@ -120,7 +115,7 @@ void MavCom::sendMavlinkMessage(const mavlink_message_t* msg)
 {
     static uint8_t buf[MAVLINK_MAX_PACKET_LEN];
     uint16_t len = mavlink_msg_to_send_buffer(buf, msg);
-    m_tcp->writeBytes(buf, len);
+    m_ap->writeBytes(buf, len);
 }
 
 void MavCom::handleMessage(const mavlink_message_t& msg)
