@@ -54,6 +54,7 @@ public:
     #define PLATFORM_NAME "esp32-s3"
     #define TCP_SERVER_CLASS TransportTCP_Server_ESP32
     #define HAL_QUEUE_CLASS(type, maxSize) ESP32Queue<type>(maxSize)
+    #define TRANSPORT_UDP_CLASS TransportUDP_ESP32
 #endif
 
 #endif

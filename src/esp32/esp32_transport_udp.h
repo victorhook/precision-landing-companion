@@ -14,7 +14,8 @@ public:
     using TransportUDP::TransportUDP;
     ~TransportUDP_ESP32();
 
-    void init();
+    void doInit() override;
+    void doDeInit() override;
     void closeSocket();
 
     bool readByte(uint8_t* byte, uint32_t timeoutMs);

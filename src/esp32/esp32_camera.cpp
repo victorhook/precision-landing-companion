@@ -6,21 +6,14 @@
 #define CAMERA_MODEL_XIAO_ESP32S3 // Has PSRAM
 #include "camera_pins.h"
 
-#include "esp32/esp32_transport_udp.h"
 #include "log.h"
 
-#include "tagStandard41h12.h"
-#include "tag16h5.h"
 
-
-TransportUDP_ESP32 udp("192.168.0.195", 9095);
+// udp.init("192.168.0.195");
 
 
 bool CameraESP32::doInit()
 {
-    // Init UDP broadcast
-    udp.init();
-
     if (!configureCamera())
     {
         error("Failed to initialize camera!\n");
@@ -64,6 +57,12 @@ bool CameraESP32::doCapture()
 
 void CameraESP32::sendImageOverUDP(const uint8_t* buf, const uint32_t len)
 {
+    // TODO: Don't need this in future...
+    if (!udp->isInitialized())
+    {
+        return;
+    }
+
     // Send image over UDP
     uint32_t t0 = micros();
 
@@ -77,7 +76,7 @@ void CameraESP32::sendImageOverUDP(const uint8_t* buf, const uint32_t len)
         uint32_t offset = i * CHUNK_SIZE;
         uint32_t chunk_size = (offset + CHUNK_SIZE > total_size) ? (total_size - offset) : CHUNK_SIZE;
         
-        udp.writeBytes(buf + offset, chunk_size);
+        udp->writeBytes(buf + offset, chunk_size);
     }
     uint32_t tx_dt_us = micros() - t0;
 }
