@@ -1,6 +1,7 @@
 #include "esp32_hal.h"
 #include "WiFi.h"
 #include <cstring> // For memcpy
+#include "credentials.h"
 
 static bool startWifiHotSpot = false;
 
@@ -13,7 +14,7 @@ void hal_init()
     else
     {
         WiFi.mode(WIFI_STA);
-        WiFi.begin("COMHEM_f0a079", "ftmkntn2");
+        WiFi.begin(WIFI_STA_SSID, WIFI_STA_PASS);
         printf("Connecting to WiFi");
         while (WiFi.status() != WL_CONNECTED)
         {
