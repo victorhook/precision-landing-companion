@@ -3,25 +3,30 @@
 #include <cstring> // For memcpy
 #include "credentials.h"
 
+#include "log.h"
+
 static bool startWifiHotSpot = false;
+
 
 void hal_init()
 {
     if (startWifiHotSpot)
     {
-
+        WiFi.softAP(WIFI_HOTSPOT_SSID, WIFI_HOTSPOT_PASS);
+        IPAddress myIP = WiFi.softAPIP();
+        info("WiFi hotspot started: %s", WiFi.softAPIP().toString().c_str());
     }
     else
     {
         WiFi.mode(WIFI_STA);
         WiFi.begin(WIFI_STA_SSID, WIFI_STA_PASS);
-        printf("Connecting to WiFi");
+        info("Connecting to WiFi");
         while (WiFi.status() != WL_CONNECTED)
         {
-            printf(".");
+            info(".");
             delay(1000);
         }
-        printf("Connected to WiFI, IP %s\n", WiFi.localIP().toString().c_str());
+        info("Connected to WiFI, IP %s\n", WiFi.localIP().toString().c_str());
     }
 }
 
