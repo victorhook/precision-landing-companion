@@ -21,19 +21,17 @@ void MavCom::init(Telemetry* telemetry)
 void MavCom::update_1hz()
 {
     activateProxyIfNeeded();
+
     mavlink_message_t msg;
-    mavlink_heartbeat_t heartbeat = 
-    {
-        .type = MAV_TYPE_ONBOARD_CONTROLLER,
-        .autopilot = MAV_AUTOPILOT_INVALID,
-        .base_mode = 0,
-        .system_status = MAV_STATE_ACTIVE
-    };
-    mavlink_msg_heartbeat_encode(
+
+    mavlink_msg_heartbeat_pack(
         MAVLINK_SYSTEM_ID,
         MAVLINK_COMPONENT_ID,
         &msg,
-        &heartbeat
+        MAV_TYPE_ONBOARD_CONTROLLER,
+        MAV_AUTOPILOT_INVALID,
+        0, 0,
+        MAV_STATE_ACTIVE
     );
     sendMavlinkMessage(&msg);
 }
@@ -42,6 +40,8 @@ void MavCom::update_10hz()
 {
     activateProxyIfNeeded();
 
+    landing_target_t landing_target;
+    //sendLandingTargetPacket(&landing_target);
 }
 
 void MavCom::update_100hz()
@@ -91,6 +91,26 @@ void MavCom::update_100hz()
 }
 
 // -- Private -- //
+void MavCom::sendLandingTargetPacket(const landing_target_t* target)
+{
+    mavlink_message_t msg;
+    mavlink_msg_landing_target_pack(
+        MAVLINK_SYSTEM_ID,
+        MAVLINK_COMPONENT_ID,
+        &msg,
+        micros(),
+        target->id,
+        0,
+        target->angle_x,
+        target->angle_y,
+        target->distance,
+        target->size_x,
+        target->size_y,
+        0, 0, 0, 0, 0, 0
+    );
+    sendMavlinkMessage(&msg);
+}
+
 void MavCom::activateProxyIfNeeded()
 {
     if (!proxyIsActive && telemetry->clientConnected())
