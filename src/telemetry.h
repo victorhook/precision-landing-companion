@@ -3,6 +3,7 @@
 
 #include "transport_tcp_server.h"
 #include "camera.h"
+#include "target_detector.h"
 #include "hal.h"
 
 #define TELEMTRY_LOG_MSG_MAX_SIZE 100
@@ -85,7 +86,7 @@ class Telemetry
 {
     public:
         Telemetry(const int tcpPort);
-        void init(Camera* camera);
+        void init(Camera* camera, TargetDetector* targetDetector);
         void update();
         bool sendLogMsg(const log_level_t level, const char* msg);
 

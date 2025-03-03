@@ -34,7 +34,7 @@ bool CameraESP32::doCapture()
         return false;
     }
 
-    detectTagsInImage((uint32_t) fb->width, (uint32_t) fb->height, (uint32_t) fb->width, fb->buf);
+    targetDetector->detectTagsInImage((uint32_t) fb->width, (uint32_t) fb->height, (uint32_t) fb->width, fb->buf);
 
     uint8_t *jpeg_buf = NULL;
     size_t jpeg_len = 0;
@@ -86,12 +86,6 @@ const char* CameraESP32::name()
     return "ESP32-S3";
 };
 
-uint8_t CameraESP32::getTagsDetected(tag_position* tags)
-{
-    memcpy(tags, &m_tags_detected, (m_nbr_of_tags_detected*sizeof(tag_position)));
-    return m_nbr_of_tags_detected;
-}
-
 bool CameraESP32::configureCamera()
 {
     camera_config_t config;
@@ -130,87 +124,4 @@ bool CameraESP32::configureCamera()
     }
 
     return true;
-}
-
-void CameraESP32::initializeTagDetection()
-{
-    // Tag detection
-    tf = tag16h5_create();
-    //tf = tagStandard41h12_create();
-
-    // Create AprilTag detector object
-    td = apriltag_detector_create();
-    
-    // Add tag family to the detector
-    apriltag_detector_add_family(td, tf);
-
-    // Tag detector configs
-    td->quad_sigma = 0.6;
-    td->quad_decimate = 4.0;
-    td->refine_edges = 1;
-    td->decode_sharpening = 0.25;
-    td->nthreads = 1;
-    td->debug = 0;
-}
-
-
-void CameraESP32::detectTagsInImage(const uint32_t width, const uint32_t height, const uint32_t stride, const uint8_t* buf)
-{
-    image_u8_t im = {
-        .width = (int32_t) width,
-        .height = (int32_t) height,
-        .stride = (int32_t) stride,
-        .buf = (uint8_t*) buf
-    };
-  
-    // Detect
-    zarray_t *detections = apriltag_detector_detect(td, &im);
-
-    m_nbr_of_tags_detected = zarray_size(detections);
-    if (m_nbr_of_tags_detected > 0)
-    {
-        //printf("Detections: ");
-        for (int i = 0; i < m_nbr_of_tags_detected; i++) {
-            apriltag_detection_t *det;
-            zarray_get(detections, i, &det);
-            
-            tag_position* tag = &m_tags_detected[i];
-
-            for (int point = 0; point < 4; point++)
-            {
-                tag->p[point].x = det->p[point][0];
-                tag->p[point].y = det->p[point][1];
-            }
-            tag->center.x = det->c[0];
-            tag->center.y = det->c[1];
-            //printf("%d ", det->id);
-        }
-        //printf("\n");
-    }
-    else
-    {
-        //printf("No tag detected\n");
-    }
-
-    // Free memory
-    apriltag_detections_destroy(detections);
-}
-
-void CameraESP32::setTagDetectionParams(const tag_detection_params_t* params)
-{
-    td->quad_decimate = params->quad_decimate;
-    td->quad_sigma = params->quad_sigma;
-    td->refine_edges = params->refine_edges;
-    td->decode_sharpening = params->decode_sharpening;
-}
-
-tag_detection_params_t CameraESP32::getTagDetectionParams()
-{
-    return
-    {
-        .quad_decimate = td->quad_decimate,
-        .quad_sigma = td->quad_sigma,
-        .refine_edges = td->refine_edges,
-        .decode_sharpening = td->decode_sharpening,
-    };
 }

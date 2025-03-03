@@ -7,27 +7,18 @@
 #include <WiFi.h>
 #include "esp32_transport_udp.h"
 
-#include "apriltag.h"
 
 class CameraESP32 : public Camera {
 public:
     using Camera::Camera;
-    uint8_t getTagsDetected(tag_position* tags) override;
-    void setTagDetectionParams(const tag_detection_params_t* params) override;
-    tag_detection_params_t getTagDetectionParams() override;
 
 protected:
     bool doInit() override;
     bool doCapture() override;
     const char* name() override;
-    void initializeTagDetection() override;
     void sendImageOverUDP(const uint8_t* buf, const uint32_t len) override;
-    void detectTagsInImage(const uint32_t width, const uint32_t height, const uint32_t stride, const uint8_t* buf) override;
 
 private:
-    apriltag_family_t* tf;
-    apriltag_detector_t* td;
-
     bool backBufferEmpty(const TickType_t timeoutTicks = portMAX_DELAY);
     void putToBackBuffer(camera_fb_t* fb);
     void swapBuffers();

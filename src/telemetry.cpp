@@ -11,10 +11,11 @@ Telemetry::Telemetry(const int tcpPort)
     logQueue = new HAL_QUEUE_CLASS(telemetry_log_t, 10);
 }
 
-void Telemetry::init(Camera* camera)
+void Telemetry::init(Camera* camera, TargetDetector* targetDetector)
 {
-    tcpServer->init();
     this->camera = camera;
+    this->targetDetector = targetDetector;
+    tcpServer->init();
     status.upTimeMs = millis();
     status.cameraFps = 0;
 }
@@ -48,7 +49,7 @@ void Telemetry::update()
     status.upTimeMs = millis();
     status.cameraFps = (uint8_t) camera->getFps();
     status.freeHeap = ESP.getFreeHeap();
-    tag_detection_params_t detection_params = camera->getTagDetectionParams();
+    tag_detection_params_t detection_params = targetDetector->getTagDetectionParams();
     status.quad_decimate = detection_params.quad_decimate;
     status.quad_sigma = detection_params.quad_sigma;
     status.refine_edges = detection_params.refine_edges;
@@ -85,7 +86,7 @@ void Telemetry::update()
 
     // Check tag detections
     static tag_position tags[10];
-    uint8_t tags_detected = camera->getTagsDetected(tags);
+    uint8_t tags_detected = targetDetector->getTagsDetected(tags);
     tx->type = TELEMETRY_PACKET_TAGS;
     tx->len = 1 + (tags_detected * sizeof(telemetry_log_t));
     // First payload byte: nbr of tags, the remainder is tag data
@@ -115,7 +116,7 @@ void Telemetry::handleTelemetryCommand(const telemetry_rx_packet_t* pkt)
     {
         case TELEMETRY_CMD_SET_DETECTION_PARAMS:
             detection_params = (tag_detection_params_t*) pkt->data;
-            camera->setTagDetectionParams(detection_params);
+            targetDetector->setTagDetectionParams(detection_params);
             break;
         default:
             warning("Unkown command type: %02x\n", pkt->type);

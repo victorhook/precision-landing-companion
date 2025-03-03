@@ -48,13 +48,12 @@ public:
 #else
     #include <Arduino.h>
     #include "esp32/esp32_hal.h"
-    #include "esp32/esp32_camera.h"
-    #include "esp32/esp32_transport_tcp_server.h"
-    #include "esp32/esp32_transport_udp.h"
     #define PLATFORM_NAME "esp32-s3"
     #define TCP_SERVER_CLASS TransportTCP_Server_ESP32
     #define HAL_QUEUE_CLASS(type, maxSize) ESP32Queue<type>(maxSize)
+    #define TRANSPORT_AP_CLASS TransportAP_ESP32
     #define TRANSPORT_UDP_CLASS TransportUDP_ESP32
+    #define CAMERA_CLASS CameraESP32
 #endif
 
 #endif

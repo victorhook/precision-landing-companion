@@ -1,9 +1,23 @@
 #ifndef ESP32_HAL_H
 #define ESP32_HAL_H
 
+#include <Arduino.h>
 #include "hal.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+
+// Include all hal drivers
+#include "esp32_hal.h"
+#include "esp32_camera.h"
+#include "esp32_transport_tcp_server.h"
+#include "esp32_transport_udp.h"
+#include "esp32_transport_ap.h"
+
+
+#define AP_BAUDRATE 921600
+#define AP_UART_TX  D0
+#define AP_UART_RX  D1
+
 
 /* ESP32-specific thread-safe queue */
 template <typename T>

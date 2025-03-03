@@ -1,13 +1,14 @@
 #include "hal.h"
-
 #include "mavcom.h"
 #include "camera.h"
 #include "telemetry.h"
+#include "target_detector.h"
 #include "log.h"
 
 MavCom mavcom;
 Camera* camera;
 Telemetry telemetry(9096);
+TargetDetector targetDetector;
 
 void setup()
 {
@@ -18,16 +19,14 @@ void setup()
 
     hal_init();
 
-    #ifdef LINUX
-        camera = new CameraLinux();
-    #else
-        camera = new CameraESP32();
-    #endif
-
-    //mavcom.init();
+    // Instantiate and initialize camera driver
+    camera = new CAMERA_CLASS(&targetDetector);
     camera->init();
 
-    telemetry.init(camera);
+    camera_meta_data_t meta_data = camera->getMetaData();
+    targetDetector.init(meta_data.img_width, meta_data.img_height, meta_data.fov);
+
+    telemetry.init(camera, &targetDetector);
 
     info("Starting main loop\n\n");
 }
