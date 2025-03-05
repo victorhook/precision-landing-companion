@@ -4,6 +4,7 @@
 #include "telemetry.h"
 #include "target_detector.h"
 #include "log.h"
+#include "build.h"
 
 MavCom mavcom;
 Camera* camera;
@@ -15,6 +16,7 @@ void setup()
     info("\n");
     info("** Precision-Landing-Companion starting up **\n");
     info("Platform: %s\n", PLATFORM_NAME);
+    info("Build time: %s\n", BUILD_DATETIME);
     info("Initializing drivers\n");
 
     hal_init();
