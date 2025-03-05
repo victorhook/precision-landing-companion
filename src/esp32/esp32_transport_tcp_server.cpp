@@ -102,7 +102,7 @@ void TransportTCP_Server_ESP32::receiverThread(void* arg)
 
 void TransportTCP_Server_ESP32::flushTX()
 {
-    if (client && client.available())
+    if (client && client.connected())
     {
         client.flush();
     }
