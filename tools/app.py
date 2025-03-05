@@ -50,6 +50,8 @@ def udp_video_stream():
         # ✅ Get detected tags from telemetry
         global tag_handler
         detected_tags = tag_handler.get_tags()  # Replace with your actual function
+        if detected_tags is None:
+            return
 
         for tag in detected_tags.tags:
             # ✅ Extract coordinates from `Point2F`
@@ -61,16 +63,31 @@ def udp_video_stream():
             pt2 = (int(max(x_coords)), int(max(y_coords)))  # Bottom-right
 
             # ✅ Draw rectangle
-            cv2.rectangle(img, pt1, pt2, (0, 255, 0), 2)
+            if detected_tags.has_lock and tag.id == detected_tags.locked_tag.id:
+                color = (0, 255, 0)
+            else:
+                color = (0, 0, 150)
+            cv2.rectangle(img, pt1, pt2, color, 2)
 
             # ✅ Draw text with tag ID
             #cv2.putText(img, f"ID: {tag.id}", (pt1[0], pt1[1] - 10),
             #            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     def draw_text(img):
-        global fps
+        global fps, tag_handler
+        detected_tags = tag_handler.get_tags()  # Replace with your actual function
+
         cv2.putText(img, f"FPS: {fps}", (10, 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        
+        if detected_tags is None:
+            return
+        if detected_tags.has_lock:
+            color = (0, 255, 0)
+        else:
+            color = (0, 0, 255)
+        cv2.putText(img, f"Lock", (270, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
     while True:
         packet, _ = sock.recvfrom(4096)
