@@ -108,6 +108,15 @@ void TransportTCP_Server_ESP32::flushTX()
     }
 }
 
+void TransportTCP_Server_ESP32::disconnectClient()
+{
+    if (client && client.connected())
+    {
+        info("Disconnecting TCP client\n");
+        client.stop();
+    }
+}
+
 bool TransportTCP_Server_ESP32::clientConnected()
 {
     return (client && client.connected());
