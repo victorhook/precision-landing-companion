@@ -1,8 +1,16 @@
 #include "target_detector.h"
 #include <math.h>
+#include "hal.h"
+#include "log.h"
+
+#define _framesRequiredForLock 5
+#define _allowedMissedFrames 2
+
+#define TARGET_TAG_ID 0
 
 
 TargetDetector::TargetDetector()
+: tagLock(_framesRequiredForLock, _allowedMissedFrames), targetTagId(TARGET_TAG_ID)
 {
     
 }
@@ -34,6 +42,10 @@ bool TargetDetector::init(const uint16_t img_width, const uint16_t img_height, c
     return true;
 }
 
+bool TargetDetector::getLockedTag(tag_t* tag)
+{
+    return tagTracker.getTag(targetTagId, tag);
+}
 
 void TargetDetector::detectTagsInImage(const uint32_t width, const uint32_t height, const uint32_t stride, const uint8_t* buf)
 {
@@ -43,11 +55,15 @@ void TargetDetector::detectTagsInImage(const uint32_t width, const uint32_t heig
         .stride = (int32_t) stride,
         .buf = (uint8_t*) buf
     };
+
+    // Remove old tags
+    tagTracker.removeOldTags();
   
     // Detect
     zarray_t *detections = apriltag_detector_detect(td, &im);
-
     m_nbr_of_tags_detected = zarray_size(detections);
+    bool targetTagFound = false;
+
     if (m_nbr_of_tags_detected > 0)
     {
         //printf("Detections: ");
@@ -55,26 +71,41 @@ void TargetDetector::detectTagsInImage(const uint32_t width, const uint32_t heig
             apriltag_detection_t *det;
             zarray_get(detections, i, &det);
             
-            tag_position* tag = &m_tags_detected[i];
+            tag_t tag;
 
+            // Update position
             for (int point = 0; point < 4; point++)
             {
-                tag->p[point].x = det->p[point][0];
-                tag->p[point].y = det->p[point][1];
+                tag.p[point].x = det->p[point][0];
+                tag.p[point].y = det->p[point][1];
             }
-            tag->center.x = det->c[0];
-            tag->center.y = det->c[1];
-            //printf("%d ", det->id);
+            tag.center.x = det->c[0];
+            tag.center.y = det->c[1];
+
+            // Update timers
+            tag.id = det->id;
+            tag.lastSeen = millis();
+
+            tagTracker.updateTag(&tag);
+
+            if (isTargetTag(tag.id))
+            {
+                targetTagFound = true;
+            }
         }
-        //printf("\n");
     }
-    else
-    {
-        //printf("No tag detected\n");
-    }
+
+    // Update tag lock hysteresis
+    tagLock.update(targetTagFound);
+    //tagTracker.printTags();
 
     // Free memory
     apriltag_detections_destroy(detections);
+}
+
+bool TargetDetector::isTargetTag(const uint16_t id)
+{
+    return id == targetTagId;
 }
 
 void TargetDetector::setTagDetectionParams(const tag_detection_params_t* params)
@@ -96,12 +127,11 @@ tag_detection_params_t TargetDetector::getTagDetectionParams()
     };
 }
 
-uint8_t TargetDetector::getTagsDetected(tag_position* tags)
+uint8_t TargetDetector::getTagsDetected(tag_t* tags)
 {
-    memcpy(tags, &m_tags_detected, (m_nbr_of_tags_detected*sizeof(tag_position)));
-    return m_nbr_of_tags_detected;
+    memcpy(tags, &tagTracker.tags, (tagTracker.tag_count*sizeof(tag_t)));
+    return tagTracker.tag_count;
 }
-
 
 landing_target_t TargetDetector::getLandingTarget()
 {
@@ -109,14 +139,14 @@ landing_target_t TargetDetector::getLandingTarget()
 }
 
 
-landing_target_t TargetDetector::calculateLandingTarget(const tag_position position)
+landing_target_t TargetDetector::calculateLandingTarget(const tag_t& tag)
 {
     landing_target_t target;
     float tag_real_width = 0.1; // In meters
 
     // Compute the normalized offset from the center of the image:
-    float tag_x = position.center.x;
-    float tag_y = position.center.y;
+    float tag_x = tag.center.x;
+    float tag_y = tag.center.y;
     float x_offset = (tag_x - ((float) img_width / 2.0)) / ((float) img_width / 2.0);  // Normalize to [-1, 1]
     float y_offset = (tag_y - ((float) img_height / 2.0)) / ((float) img_height / 2.0);
 
@@ -124,8 +154,8 @@ landing_target_t TargetDetector::calculateLandingTarget(const tag_position posit
     float angle_y = y_offset * ((float) camera_fov / 2.0);
 
     // Measure the Tag Size in Pixels
-    float tag_pixel_width = sqrt(pow(position.p[1].x - position.p[0].x, 2) + pow(position.p[1].y - position.p[0].y, 2));
-    float tag_pixel_height = sqrt(pow(position.p[2].x - position.p[1].x, 2) + pow(position.p[2].y - position.p[1].y, 2));
+    float tag_pixel_width = sqrt(pow(tag.p[1].x - tag.p[0].x, 2) + pow(tag.p[1].y - tag.p[0].y, 2));
+    float tag_pixel_height = sqrt(pow(tag.p[2].x - tag.p[1].x, 2) + pow(tag.p[2].y - tag.p[1].y, 2));
     // Convert to radians
     float size_x = (tag_pixel_width / img_width) * (float) camera_fov;
     float size_y = (tag_pixel_height / img_height) * (float) camera_fov;
@@ -142,4 +172,131 @@ landing_target_t TargetDetector::calculateLandingTarget(const tag_position posit
     target.size_y = size_y;
 
     return target;
+}
+
+bool TargetDetector::hasLock()
+{
+    return tagLock.hasLock();
+}
+
+// -- Lock -- //
+
+HysteresisLock::HysteresisLock(const uint32_t framesRequiredForLock, const uint32_t allowedMissedFrames)
+: framesRequiredForLock(framesRequiredForLock), allowedMissedFrames(allowedMissedFrames),
+missedConsecutiveFrames(0)
+{}
+
+HysteresisLock::~HysteresisLock()
+{}
+
+bool HysteresisLock::update(const bool tagIdAvailable)
+{
+    //printf("%d, %d, %d, %d\n", tagIdAvailable, missedConsecutiveFrames, okFrames, hasLock());
+    if (tagIdAvailable)
+    {
+        missedConsecutiveFrames = 0;
+        okFrames++;
+    }
+    else
+    {
+        missedConsecutiveFrames++;
+        if (missedConsecutiveFrames >= allowedMissedFrames)
+        {
+            okFrames = 0;
+        }
+    }
+    return hasLock();
+}
+
+bool HysteresisLock::hasLock()
+{
+    return okFrames >= framesRequiredForLock;
+}
+
+// -- TagTracker -- //
+// ✅ Constructor: Initialize count
+TagTracker::TagTracker() : tag_count(0) {}
+
+// ✅ Check if a tag exists
+bool TagTracker::tagExists(int id)
+{
+    for (int i = 0; i < tag_count; i++)
+    {
+        if (tags[i].id == id)
+            return true;
+    }
+    return false;
+}
+
+// ✅ Remove old tags (if timeout exceeded)
+void TagTracker::removeOldTags()
+{
+    for (int i = 0; i < tag_count;)
+    {
+        if ((millis() - tags[i].lastSeen) > TIMEOUT_MS)
+        {
+            removeAt(i);
+        }
+        else
+        {
+            i++;
+        }
+    }
+}
+
+// ✅ Add or update a tag
+void TagTracker::updateTag(tag_t* tag)
+{
+    // If tag exists, update timestamp and position
+    for (int i = 0; i < tag_count; i++)
+    {
+        if (tags[i].id == tag->id)
+        {
+            memcpy(&tags[i], tag, sizeof(tag_t));
+            tags[i].lastSeen = millis();
+            return;
+        }
+    }
+
+    // Add new tag if space available
+    if (tag_count < MAX_TAGS)
+    {
+        memcpy(&tags[tag_count], tag, sizeof(tag_t));
+        tag_count++;
+    }
+}
+
+bool TagTracker::getTag(const uint16_t id, tag_t* tag)
+{
+    // If tag exists, update timestamp
+    for (int i = 0; i < tag_count; i++)
+    {
+        if (tags[i].id == tag->id)
+        {
+            memcpy(tag, &tags[i], sizeof(tag_t));
+            return true;
+        }
+    }
+    return false;
+}
+
+// ✅ Debug: Print tracked tags
+void TagTracker::printTags()
+{
+    info("Tracked Tags: ");
+    for (int i = 0; i < tag_count; i++)
+    {
+        info("[%d] ", tags[i].id);
+    }
+    info("\n");
+}
+
+// ✅ Remove tag at index (shift array left)
+void TagTracker::removeAt(int index)
+{
+    for (int i = index; i < tag_count - 1; i++)
+    {
+        tags[i] = tags[i + 1];
+    }
+    tag_count--;
 }
