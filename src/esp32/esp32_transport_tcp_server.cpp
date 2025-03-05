@@ -45,7 +45,7 @@ uint32_t TransportTCP_Server_ESP32::readBytes(uint8_t *bytes, uint32_t maxLen, u
 {
     if (client && client.available())
     {
-        return client.readBytes(bytes, maxLen);
+        return client.read(bytes, maxLen);
     }
     return 0;
 }
