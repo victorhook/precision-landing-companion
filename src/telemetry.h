@@ -18,6 +18,7 @@ typedef enum : uint8_t
     TELEMETRY_PACKET_STATUS = 0x01,
     TELEMETRY_PACKET_TAGS   = 0x02,
     TELEMETRY_PACKET_LOG    = 0x03,
+    TELEMETRY_PACKET_PING   = 0x10,
     TELEMETRY_CMD_SET_DETECTION_PARAMS = 0x30,
 } telemetry_packet_type_t;
 
@@ -42,6 +43,9 @@ typedef struct
 }__attribute__((packed)) telemetry_status_t;
 // -- TELEMTRY_START END -- //
 
+#define TELEMETRY_PACKET_MAX_PAYLOAD_SIZE 512
+#define TELEMETRY_PACKET_HEADER_SIZE 5
+
 typedef struct
 {
     uint8_t  level;
@@ -51,9 +55,10 @@ typedef struct
 
 typedef struct
 {
+    uint16_t magic;
     telemetry_packet_type_t type;
     uint16_t len;
-    uint8_t* data;
+    uint8_t payload[TELEMETRY_PACKET_MAX_PAYLOAD_SIZE];
 }__attribute__((packed)) telemetry_packet_t;
 
 typedef struct
@@ -101,7 +106,10 @@ class Telemetry
         telemetry_log_t log_tx;
         TelemetryPacketParser telemParser;
 
+        uint32_t lastTelemetryPing;
+
         void handleTelemetryCommand(const telemetry_rx_packet_t* pkt);
+        void sendTelemetryPacket(const telemetry_packet_type_t packetType, const uint8_t* data, const uint32_t len);
 };
 
 #endif
