@@ -67,11 +67,9 @@ def udp_video_stream():
                 color = (0, 255, 0)
             else:
                 color = (0, 0, 150)
+
             cv2.rectangle(img, pt1, pt2, color, 2)
 
-            # ✅ Draw text with tag ID
-            #cv2.putText(img, f"ID: {tag.id}", (pt1[0], pt1[1] - 10),
-            #            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     def draw_text(img):
         global fps, tag_handler
@@ -82,8 +80,20 @@ def udp_video_stream():
         
         if detected_tags is None:
             return
+
         if detected_tags.has_lock:
             color = (0, 255, 0)
+            cv2.putText(img, f"Ax: {round(detected_tags.landing_target.angle_x, 1)}", (10, 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            cv2.putText(img, f"Ay: {round(detected_tags.landing_target.angle_y, 1)}", (10, 60),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            cv2.putText(img, f"SX: {round(detected_tags.landing_target.size_x, 1)}", (10, 80),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            cv2.putText(img, f"Sy: {round(detected_tags.landing_target.size_y, 1)}", (10, 100),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            cv2.putText(img, f"D: {round(detected_tags.landing_target.distance, 1)}", (10, 120),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
         else:
             color = (0, 0, 255)
         cv2.putText(img, f"Lock", (270, 20),

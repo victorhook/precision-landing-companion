@@ -98,9 +98,29 @@ class Tag:
         return tag
 
 @dataclass
+class LandingTarget:
+    angle_x: float  # rad	-  X-axis angular offset of the target from the center of the image
+    angle_y: float  # rad	-  Y-axis angular offset of the target from the center of the image
+    distance: float # m	-  Distance to the target from the vehicle
+    size_x: float   # rad	-  Size of target along x-axis
+    size_y: float   # rad	-  Size of target along y-axis
+    id: int # uint16_t
+
+    _fmt = '<fffffH'
+
+    @classmethod
+    def size(cls) -> int:
+        return struct.calcsize(cls._fmt)
+    
+    def __str__(self) -> str:
+        decimals = 3
+        return f'[{self.id}] ({round(self.angle_x, decimals)}, {round(self.angle_y, decimals)}) {round(self.distance, decimals)}  ({round(self.size_x, decimals)}, {round(self.size_y, decimals)})'
+
+@dataclass
 class TelemetryTags(TelemetryPacket):
     has_lock: bool
     locked_tag: Tag
+    landing_target: LandingTarget
     tags: t.List[Tag]
 
 
@@ -128,8 +148,8 @@ class TelemetryServer:
         self._discarded_packets = 0
         self._subscribers: t.Dict[TelemetryPacketType, TelemetryPacketSubscriber] = dict()
         self._tx = Queue()
+        self._rx = Queue()
         self._stop_flag = Event()
-        self._socket_closed_flag = Event()
 
     def subscribe(self, packet_type: TelemetryPacketType, subscriber: TelemetryPacketSubscriber) -> None:
         if packet_type not in self._subscribers:
@@ -155,166 +175,164 @@ class TelemetryServer:
     def send_packet(self, packet: TelemetryPacket) -> None:
         self._tx.put(packet)
 
-    def _connect(self, ip: str, port: int) -> bool:
-        try:    
-
-            if not self._socket is None:
-                self._socket.close()
-
-            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._socket.setblocking(True)
-            self._socket.settimeout(3)
-            #self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-            #self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 2)  # 5 sec idle before keep-alive probe
-            #self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 1)  # 1 sec between probes
-            #self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)  # 3 failed probes = disconnect
-            self._socket.connect((ip, port))
-            return True
-        except (ConnectionRefusedError, OSError) as e:
-            print(f'Failed to open connection.. {e}')
-            return False
-
     def stop(self) -> None:
         self._stop_flag.set()
 
+    def _read(self, nbr_of_bytes: int, buf: bytearray) -> int:
+        bytes_read = 0
+        while bytes_read < nbr_of_bytes:
+            bytes_left = nbr_of_bytes - bytes_read
+            bytes_read += self._socket.recv_into(buf, bytes_left)
+        return True
+
+    def _get_rx_bytes(self, nbr_of_bytes, timeout = 1) -> bytes:
+        buf = bytearray(nbr_of_bytes)
+        for i in range(nbr_of_bytes):
+            try:
+                buf[i] = self._rx.get(block=True, timeout=1)
+            except Empty:
+                print('Empty RX QUUE!')
+                return None
+        return buf
+
     def start(self, ip: str, port: int) -> None:
+        self._socket: socket.socket
         self._stop_flag.clear()
-        print(f'Telemetry server starting, reaching client at {ip}:{port}')
 
         while not self._stop_flag.is_set():
-            if not self._connect(ip, port):
+            connect_attempts = 0
+            timeouts_in_row = 0
+            try:
+                print(f'Connecting to {ip}:{port}')
+                connect_attempts += 1
+                self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket.setblocking(True)
+                self._socket.settimeout(1)
+                self._socket.connect((ip, port))
+                print('Connected')
+            except ConnectionRefusedError:
+                print('Connection refused, retrying...')
+                time.sleep(2)
+                continue
+            except TimeoutError:
+                print(f'Connect {connect_attempts} timeout, retrying...')
                 time.sleep(1)
-                print('retry?')
                 continue
 
-            print(f'Telemetry server Connected to {ip}:{port}')
-            self._socket_closed_flag.clear()
-            last_ping = 0
+            header_buf = bytearray(5)
+            payload_buf = bytearray(1024)
 
-            while not self._socket_closed_flag.is_set() and not self._stop_flag.is_set():
-                timed_out = False
+            while True:
+                try:
+                    #header_raw = self._get_rx_bytes(5)
+                    if not self._read(5, header_buf):
+                        print('CONTINUE HEADER')
+                        continue
 
-                if (time.time() - last_ping) > 1:
+                    header = self._parse_header(header_buf)
+                    if not header:
+                        print('CONTINUE HEADER 2')
+                        continue
+
+                    if not self._read(header.len, payload_buf):
+                        print('CONTINUE HEADER')
+                        continue
+
+                    packet = self._parse_packet(header, payload_buf[:header.len])
+
+                    if not packet:
+                        print('Unable to parse packet...?')
+                        continue
+
+                    timeouts_in_row = 0
+
+                    if header.type == TelemetryPacketType.TAGS:
+                        packet: TelemetryTags
+
+                    # Call waiting subscribers
+                    for subscriber in self._subscribers.get(header.type, []):
+                        subscriber.handle_telemetry_packet(packet)
+
+                    # Put packet to receiving queue
                     try:
-                        last_ping = time.time()
-                        self._socket.send(TelemetryPing().to_bytes())
-                    except Exception as e:
-                        print(f'Error sending ping: {e}')
+                        self._queue.put_nowait(packet)
+                    except Full:
+                        # If the queue is full, we'll just discard the packets
+                        self._discarded_packets += 1
 
-                # Read header
-                header = self._read_header()
-                if not header:
-                    continue
+                    # At last, we'll send pending TX packets
+                    while not self._tx.empty():
+                        try:
+                            pkt = self._tx.get()
+                            print(f'TX: {pkt} ({" ".join(hex(a)[2:].zfill(2) for a in pkt.to_bytes())})')
+                            self._socket.send(pkt.to_bytes())
+                        except Exception as e:
+                            print(f'Failed to send packet: {e}')
 
-                # Read payload data, if needed
-                if header.len > 0:
-                    try:
-                        payload = self._socket.recv(header.len)
-                        if not payload:
-                            timed_out = True
-                    except (socket.timeout, OSError):
-                        timed_out = True
-
-                    if timed_out:
-                        self._timed_out()
+                except TimeoutError:
+                    timeouts_in_row += 1
+                    if timeouts_in_row > 3:
                         break
-                else:
-                    payload = b''
 
-                packet = None
-
-                try:
-                    if header.type == TelemetryPacketType.STATUS:
-                        packet = TelemetryStatus(*struct.unpack(TelemetryStatus._fmt, payload))
-                        #print(f'{packet.to_json()}')
-                    elif header.type == TelemetryPacketType.TAGS:
-                        nbr_of_tags = payload[0]
-                        has_lock = payload[1]
-                        locked_tag = Tag.from_bytes(payload[2:2+Tag.size()])
-                        packet = TelemetryTags(has_lock, locked_tag, [])
-                        #print(f'TAGS: {nbr_of_tags} ({packet_len} bytes): {payload}')
-                        for tag in range(nbr_of_tags):
-                            start_index = 2 + Tag.size() + (tag*Tag.size())
-                            end_index = start_index + Tag.size()
-                            tag = Tag.from_bytes(payload[start_index:end_index])
-                            packet.tags.append(tag)
-                    elif header.type == TelemetryPacketType.LOG:
-                        # We'll parse the header automatically, but msg by hand, as length varies
-                        header_len = struct.calcsize(TelemetryLog._fmt)
-                        log = TelemetryLog(*struct.unpack(TelemetryLog._fmt, payload[:header_len]))
-                        log.msg = payload[header_len:].decode('ascii').rstrip('\x00')
-                        packet = log
-
-                except struct.error as e:
-                    print(f'Failed to parse packet for {header.type} ({payload})')
-                    continue
-
-                if not packet:
-                    print('Unable to parse packet...?')
-                    continue
-
-                #print(header.type.name)
-
-                # Call waiting subscribers
-                for subscriber in self._subscribers.get(header.type, []):
-                    subscriber.handle_telemetry_packet(packet)
-
-                # Put packet to receiving queue
-                try:
-                    self._queue.put_nowait(packet)
-                except Full:
-                    # If the queue is full, we'll just discard the packets
-                    self._discarded_packets += 1
-
-                # At last, we'll send pending TX packets
-                while not self._tx.empty():
-                    try:
-                        pkt = self._tx.get()
-                        print(f'TX: {pkt} ({" ".join(hex(a)[2:].zfill(2) for a in pkt.to_bytes())})')
-                        self._socket.send(pkt.to_bytes())
-                    except Exception as e:
-                        print(f'Failed to send packet: {e}')
-
-            time.sleep(1)
-
-        print('Stopping')
+                except Exception as e:
+                    # No data available
+                    print(f'EXCEPTION: {e}')
+                
+    def _parse_packet(self, header: TelemetryPacketHeader, payload: bytes) -> TelemetryPacket:
         try:
-            self._socket_closed_flag.set()
-            self._socket.close()
-        except Exception as e:
-            print(f'Error when closing TCP connection: {e}')
+            if header.type == TelemetryPacketType.STATUS:
+                packet = TelemetryStatus(*struct.unpack(TelemetryStatus._fmt, payload))
+                #print(f'{packet.to_json()}')
+            elif header.type == TelemetryPacketType.TAGS:
+                # 1. Header
+                nbr_of_tags = payload[0]
+                has_lock = payload[1]
+                
+                # 2. Locked Tag
+                index_start = 2
+                index_end = 2 + Tag.size()
+                locked_tag = Tag.from_bytes(payload[index_start:index_end])
 
-    def _timed_out(self) -> None:
-        print('Timed out reading data, assuming client disconnected, closing socket and re-trying to open')
-        self._socket_closed_flag.set()
-        self._socket.close()
+                # 3. Landing target
+                index_start = index_end
+                index_end += LandingTarget.size()
+                landing_target = LandingTarget(*struct.unpack(LandingTarget._fmt, payload[index_start:index_end]))
 
-    def _read_header(self) -> TelemetryPacketHeader:
-        timed_out = False
+                # 4. All tags (if available)
+                packet = TelemetryTags(has_lock, locked_tag, landing_target, [])
+                #print(f'TAGS: {nbr_of_tags} ({packet_len} bytes): {payload}')
+                for tag in range(nbr_of_tags):
+                    #start_index = 2 + Tag.size() + (tag*Tag.size())
+                    #end_index = start_index + Tag.size()
+                    index_start = index_end
+                    index_end = index_start + Tag.size()
+                    tag = Tag.from_bytes(payload[index_start:index_end])
+                    packet.tags.append(tag)
 
+            elif header.type == TelemetryPacketType.LOG:
+                # We'll parse the header automatically, but msg by hand, as length varies
+                header_len = struct.calcsize(TelemetryLog._fmt)
+                log = TelemetryLog(*struct.unpack(TelemetryLog._fmt, payload[:header_len]))
+                log.msg = payload[header_len:].decode('ascii').rstrip('\x00')
+                packet = log
+
+            return packet
+
+        except struct.error as e:
+            print(f'Failed to parse packet for {header.type} ({payload})')
+
+    def _parse_header(self, header_raw: bytearray) -> TelemetryPacketHeader:
         # First 5 bytes are header
         # Byte 0-1 is magic (0x1234)
         # Byte 2 is packet type
         # Byte 3-4 is packet length
 
-        try:
-            header_size = 5
-            header = self._socket.recv(header_size)
-            if not header or len(header) != header_size:
-                timed_out = True
-        except (socket.timeout, OSError) as e:
-            print(f'timed out reading: {e}')
-            timed_out = True
-            
-        if timed_out:
-            print('timed out reading!')
-            self._timed_out()
+        if len(header_raw) != 5:
             return None
 
         try:
-            magic, packet_type_raw, packet_len = struct.unpack('<HBH', header)
+            magic, packet_type_raw, packet_len = struct.unpack('<HBH', header_raw)
             if magic != 0x1234:
-                print('Incorrect magic')
                 return None
 
             packet_type = TelemetryPacketType(packet_type_raw)
@@ -334,23 +352,8 @@ class TelemetryServer:
         return TelemetryPacketHeader(packet_type, packet_len)
 
 
-server = TelemetryServer()
-ip = '192.168.0.202'
-port = 9096
-t = Thread(target=server.start, args=(ip, port))
-
-#def signal_handler(sig, frame):
-#    global server
-#    print("\nCtrl+C detected! Cleaning up before exiting...")
-#    server.stop()
-#    t.join()
-#    sys.exit(0)
-
-# Attach signal handler
-#signal.signal(signal.SIGINT, signal_handler)
-
-
 if __name__ == '__main__':
-    t.start()
-    t.join()
-    print('Done!')
+    ip = '192.168.0.202'
+    port = 9096
+    server = TelemetryServer()
+    server.start(ip, port)
