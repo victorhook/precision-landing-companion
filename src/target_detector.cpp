@@ -63,6 +63,7 @@ void TargetDetector::detectTagsInImage(const uint32_t width, const uint32_t heig
     zarray_t *detections = apriltag_detector_detect(td, &im);
     m_nbr_of_tags_detected = zarray_size(detections);
     bool targetTagFound = false;
+    tag_t tag;
 
     if (m_nbr_of_tags_detected > 0)
     {
@@ -71,8 +72,6 @@ void TargetDetector::detectTagsInImage(const uint32_t width, const uint32_t heig
             apriltag_detection_t *det;
             zarray_get(detections, i, &det);
             
-            tag_t tag;
-
             // Update position
             for (int point = 0; point < 4; point++)
             {
@@ -96,7 +95,12 @@ void TargetDetector::detectTagsInImage(const uint32_t width, const uint32_t heig
     }
 
     // Update tag lock hysteresis
-    tagLock.update(targetTagFound);
+    if (tagLock.update(targetTagFound))
+    {
+        getLockedTag(&tag);
+        calculateLandingTarget(tag);
+        info("[%d] (%f, %f) (%f, %f)\n", landing_target.id, landing_target.angle_x, landing_target.angle_y, landing_target.distance, landing_target.size_x, landing_target.size_y);
+    }
     //tagTracker.printTags();
 
     // Free memory
@@ -133,15 +137,14 @@ uint8_t TargetDetector::getTagsDetected(tag_t* tags)
     return tagTracker.tag_count;
 }
 
-landing_target_t TargetDetector::getLandingTarget()
+void TargetDetector::getLandingTarget(landing_target_t* target)
 {
-    return landing_target;
+    memcpy(target, &landing_target, sizeof(landing_target_t));
 }
 
 
-landing_target_t TargetDetector::calculateLandingTarget(const tag_t& tag)
+void TargetDetector::calculateLandingTarget(const tag_t& tag)
 {
-    landing_target_t target;
     float tag_real_width = 0.1; // In meters
 
     // Compute the normalized offset from the center of the image:
@@ -165,13 +168,11 @@ landing_target_t TargetDetector::calculateLandingTarget(const tag_t& tag)
     float distance = (tag_real_width * focal_length_px) / tag_pixel_width;
 
     // Update target
-    target.angle_x = angle_x;
-    target.angle_y = angle_y;
-    target.distance = distance;
-    target.size_x = size_x;
-    target.size_y = size_y;
-
-    return target;
+    landing_target.angle_x = angle_x;
+    landing_target.angle_y = angle_y;
+    landing_target.distance = distance;
+    landing_target.size_x = size_x;
+    landing_target.size_y = size_y;
 }
 
 bool TargetDetector::hasLock()

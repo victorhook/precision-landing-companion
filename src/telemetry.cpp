@@ -91,19 +91,37 @@ void Telemetry::update()
     static tag_t tags[10];
     uint8_t tags_detected = targetDetector->getTagsDetected(tags);
     uint32_t all_tags_size = tags_detected * sizeof(tag_t);
+    
     // Tag detection packet:
     // First byte: nbr of tags
     // Second byte: Locked yes/no
     // Locked tag (0s if no lock)
+    // Landing target (`landing_target_t`)
     // All tags
     static tag_t lockedTag;
     bool hasLock = targetDetector->getLockedTag(&lockedTag);
+    landing_target_t target;
+    if (hasLock)
+    {
+        targetDetector->getLandingTarget(&target);
+        info(" -> [%d] (%f, %f) (%f, %f)\n", target.id, target.angle_x, target.angle_y, target.distance, target.size_x, target.size_y);
+    }
+    else
+    {
+        memset(&target, 0, sizeof(landing_target_t));
+    }
+    
+    // Header
     buf[0] = tags_detected;
     buf[1] = (hasLock) ? 1 : 0;
+    // Locked tag
     memcpy(&buf[2], &lockedTag, sizeof(tag_t));
-    memcpy(&buf[2 + sizeof(tag_t)], &tags, all_tags_size);
+    // Landing target
+    memcpy(&buf[2 + sizeof(tag_t)], &target, sizeof(landing_target_t));
+    // All of tags
+    memcpy(&buf[2 + sizeof(tag_t) + sizeof(landing_target_t)], &tags, all_tags_size);
     
-    uint32_t packet_size = 2 + sizeof(tag_t) + all_tags_size;
+    uint32_t packet_size = 2 + sizeof(tag_t) + sizeof(landing_target_t) + all_tags_size;
     sendTelemetryPacket(TELEMETRY_PACKET_TAGS, buf, packet_size);
 
     return;

@@ -45,7 +45,7 @@ typedef struct
     float size_x;	// rad	-  Size of target along x-axis
     float size_y;	// rad	-  Size of target along y-axis
     uint16_t id;
-} landing_target_t;
+}__attribute__((packed)) landing_target_t;
 
 
 #define MAX_TAGS 10          // Maximum number of tracked tags
@@ -96,7 +96,7 @@ class TargetDetector
         uint8_t getTagsDetected(tag_t* tags);
         void setTagDetectionParams(const tag_detection_params_t* params);
         tag_detection_params_t getTagDetectionParams();
-        landing_target_t getLandingTarget();
+        void getLandingTarget(landing_target_t* target);
 
         bool hasLock();
         bool getLockedTag(tag_t* tag);
@@ -115,7 +115,7 @@ class TargetDetector
         uint16_t img_height;
         uint8_t camera_fov;
 
-        landing_target_t calculateLandingTarget(const tag_t& tag);
+        void calculateLandingTarget(const tag_t& tag);
         bool isTargetTag(const uint16_t id);
 };
 
