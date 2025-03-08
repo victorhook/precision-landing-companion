@@ -98,7 +98,7 @@ void MavCom::sendLandingTargetPacket(const landing_target_t* target)
         MAVLINK_SYSTEM_ID,
         MAVLINK_COMPONENT_ID,
         &msg,
-        micros(),
+        hal_micros(),
         target->id,
         0,
         target->angle_x,

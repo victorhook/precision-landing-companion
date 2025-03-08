@@ -59,9 +59,9 @@ void loop()
     }
     if (frame % 33 == 0)
     {
-        uint32_t t0 = micros();
+        uint32_t t0 = hal_micros();
         camera->capture();
-        uint32_t dt = micros() - t0;
+        uint32_t dt = hal_micros() - t0;
         //debug("CAM DT: %.1f ms\n", (float) dt / 1000.0);
     }
 
@@ -82,9 +82,11 @@ static void print_statistics()
     tag_t tags[10];
     static uint32_t last_print = 0;
     uint8_t tags_detected = targetDetector.getTagsDetected(tags);
-    if ((millis() - last_print) > 1000)
+    char ip[17];
+    if ((hal_millis() - last_print) > 1000)
     {
-        info("FPS: %d, Thrown: %d, Tags: %d, Lock: %d, IP: %s, Heap: %d\n", camera->getFps(), camera->getThrownFrames(), tags_detected, targetDetector.hasLock(), WiFi.localIP().toString().c_str(), ESP.getFreeHeap());
-        last_print = millis();
+        hal_get_ip(ip);
+        info("FPS: %d, Thrown: %d, Tags: %d, Lock: %d, IP: %s, Heap: %d\n", camera->getFps(), camera->getThrownFrames(), tags_detected, targetDetector.hasLock(), ip, hal_get_free_heap());
+        last_print = hal_millis();
     }
 }

@@ -5,8 +5,6 @@
 #include <string.h>
 #include <stddef.h>
 #include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
 
 /* Delay for a specified number of milliseconds */
 void hal_delay(const uint32_t ms);
@@ -19,6 +17,12 @@ uint32_t hal_millis();
 
 /* Get the current time in microseconds since program start */
 uint32_t hal_micros();
+
+/* Fills `ip` with our current IP address */
+void hal_get_ip(char ip[17]);
+
+/* Returns free heap, i bytes */
+uint32_t hal_get_free_heap();
 
 /* Initializes the HAL */
 void hal_init();
@@ -39,16 +43,13 @@ public:
 
 // -- Platform specific -- //
 #ifdef LINUX
-    #include "linux/linux_camera.h"
-    #include "linux/linux_transport_udp.h"
-    #include "linux/linux_transport_tcp.h"
+    #include "linux/linux_hal.h"
     #define PLATFORM_NAME "linux"
-
+    #define TCP_SERVER_CLASS TransportTCP_Server_Linux
+    #define HAL_QUEUE_CLASS(type, maxSize) LinuxQueue<type>(maxSize)
+    #define TRANSPORT_AP_CLASS TransportAP_Linux
+    #define TRANSPORT_UDP_CLASS TransportUDP_Linux
     #define CAMERA_CLASS CameraLinux
-
-    void setup();
-
-    void loop();
 #else
     #include "esp32/esp32_hal.h"
     #define PLATFORM_NAME "esp32-s3"

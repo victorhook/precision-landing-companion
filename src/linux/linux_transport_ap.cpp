@@ -1,4 +1,4 @@
-#include "linux_transport_tcp.h"
+#include "linux_transport_ap.h"
 
 #include <iostream>
 #include <sys/socket.h>
@@ -6,8 +6,13 @@
 #include <unistd.h>
 #include <cstring>
 
+TransportAP_Linux::TransportAP_Linux(const char* ip, const uint16_t port)
+: ip(ip), port(port)
+{
 
-TransportTCP_Linux::~TransportTCP_Linux()
+}
+
+TransportAP_Linux::~TransportAP_Linux()
 {
     running = false;
     closeSocket();
@@ -15,7 +20,7 @@ TransportTCP_Linux::~TransportTCP_Linux()
     if (rx_thread.joinable()) rx_thread.join();
 }
 
-void TransportTCP_Linux::init()
+bool TransportAP_Linux::init()
 {
     running = true;
     
@@ -23,15 +28,16 @@ void TransportTCP_Linux::init()
     if (!connectToServer())
     {
         std::cerr << "Failed to connect to ArduPilot TCP server" << std::endl;
-        return;
+        return false;
     }
 
     // Start TX and RX threads
-    tx_thread = std::thread(&TransportTCP_Linux::txLoop, this);
-    rx_thread = std::thread(&TransportTCP_Linux::rxLoop, this);
+    tx_thread = std::thread(&TransportAP_Linux::txLoop, this);
+    rx_thread = std::thread(&TransportAP_Linux::rxLoop, this);
+    return true;
 }
 
-bool TransportTCP_Linux::connectToServer()
+bool TransportAP_Linux::connectToServer()
 {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
@@ -61,7 +67,7 @@ bool TransportTCP_Linux::connectToServer()
     return true;
 }
 
-void TransportTCP_Linux::closeSocket()
+void TransportAP_Linux::closeSocket()
 {
     if (sockfd >= 0)
     {
@@ -70,7 +76,7 @@ void TransportTCP_Linux::closeSocket()
     }
 }
 
-void TransportTCP_Linux::txLoop()
+void TransportAP_Linux::txLoop()
 {
     while (running)
     {
@@ -98,7 +104,7 @@ void TransportTCP_Linux::txLoop()
     }
 }
 
-void TransportTCP_Linux::rxLoop()
+void TransportAP_Linux::rxLoop()
 {
     uint8_t buffer[1024];
 
@@ -124,7 +130,7 @@ void TransportTCP_Linux::rxLoop()
 }
 
 
-uint32_t TransportTCP_Linux::writeBytes(const uint8_t *data, uint32_t len)
+uint32_t TransportAP_Linux::writeBytes(const uint8_t *data, uint32_t len)
 {
     if (!data || len == 0) return 0;
 
@@ -135,7 +141,7 @@ uint32_t TransportTCP_Linux::writeBytes(const uint8_t *data, uint32_t len)
 }
 
 
-uint32_t TransportTCP_Linux::readBytes(uint8_t *buffer, uint32_t max_len, uint32_t timeoutMs)
+uint32_t TransportAP_Linux::readBytes(uint8_t *buffer, uint32_t max_len, uint32_t timeoutMs)
 {
     if (!buffer || max_len == 0) return 0; // Fix: Return 0 instead of false
 
@@ -159,7 +165,7 @@ uint32_t TransportTCP_Linux::readBytes(uint8_t *buffer, uint32_t max_len, uint32
 
 
 
-bool TransportTCP_Linux::readByte(uint8_t *byte, uint32_t timeoutMs)
+bool TransportAP_Linux::readByte(uint8_t *byte, uint32_t timeoutMs)
 {
     std::unique_lock<std::mutex> lock(rx_mutex);
     

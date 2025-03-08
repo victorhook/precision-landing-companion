@@ -16,9 +16,9 @@ void Telemetry::init(Camera* camera, TargetDetector* targetDetector)
     this->camera = camera;
     this->targetDetector = targetDetector;
     tcpServer->init();
-    status.upTimeMs = millis();
+    status.upTimeMs = hal_millis();
     status.cameraFps = 0;
-    lastTelemetryPing = millis();
+    lastTelemetryPing = hal_millis();
 }
 
 void Telemetry::sendTelemetryPacket(const telemetry_packet_type_t packetType, const uint8_t* data, const uint32_t len)
@@ -64,9 +64,9 @@ void Telemetry::update()
     const int header_size = 3;
     uint32_t packetSize = header_size + sizeof(telemetry_status_t);
     
-    status.upTimeMs = millis();
+    status.upTimeMs = hal_millis();
     status.cameraFps = (uint8_t) camera->getFps();
-    status.freeHeap = ESP.getFreeHeap();
+    status.freeHeap = hal_get_free_heap();
     tag_detection_params_t detection_params = targetDetector->getTagDetectionParams();
     status.quad_decimate = detection_params.quad_decimate;
     status.quad_sigma = detection_params.quad_sigma;
@@ -104,7 +104,7 @@ void Telemetry::update()
     if (hasLock)
     {
         targetDetector->getLandingTarget(&target);
-        info(" -> [%d] (%f, %f) (%f, %f)\n", target.id, target.angle_x, target.angle_y, target.distance, target.size_x, target.size_y);
+        //info(" -> [%d] (%f, %f) (%f, %f)\n", target.id, target.angle_x, target.angle_y, target.distance, target.size_x, target.size_y);
     }
     else
     {
@@ -126,7 +126,7 @@ void Telemetry::update()
 
     return;
     // Disconnect client if we haven't received a ping within reasonable time
-    if ((millis() - lastTelemetryPing) > 3000)
+    if ((hal_millis() - lastTelemetryPing) > 3000)
     {
         // Client might be stuck connected
         info("Client inactive, disconnecting\n");
@@ -139,7 +139,7 @@ bool Telemetry::sendLogMsg(const log_level_t level, const char* msg)
     // Create new log block and put to queue
     telemetry_log_t log;
     log.level = level;
-    log.timestamp = millis();
+    log.timestamp = hal_millis();
     strncpy(log.msg, msg, TELEMTRY_LOG_MSG_MAX_SIZE);
     log.msg[TELEMTRY_LOG_MSG_MAX_SIZE] = 0; // Null termination
 
@@ -157,7 +157,7 @@ void Telemetry::handleTelemetryCommand(const telemetry_rx_packet_t* pkt)
             targetDetector->setTagDetectionParams(detection_params);
             break;
         case TELEMETRY_PACKET_PING:
-            lastTelemetryPing = millis();
+            lastTelemetryPing = hal_millis();
             break;
         default:
             warning("Unkown command type: %02x\n", pkt->type);

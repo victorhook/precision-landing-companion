@@ -13,7 +13,7 @@ TransportUDP_Linux::~TransportUDP_Linux()
     if (rx_thread.joinable()) rx_thread.join();
 }
 
-void TransportUDP_Linux::init()
+void TransportUDP_Linux::doInit()
 {
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0)
@@ -25,10 +25,16 @@ void TransportUDP_Linux::init()
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(server_port);
-    inet_pton(AF_INET, ip, &server_addr.sin_addr);
+    // TODO: FIX
+    //inet_pton(AF_INET, ip, &server_addr.sin_addr);
 
     running = true;
     rx_thread = std::thread(&TransportUDP_Linux::rxLoop, this);
+}
+
+void TransportUDP_Linux::doDeInit()
+{
+    
 }
 
 void TransportUDP_Linux::closeSocket()

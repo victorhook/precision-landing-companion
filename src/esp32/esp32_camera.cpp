@@ -64,7 +64,7 @@ void CameraESP32::sendImageOverUDP(const uint8_t* buf, const uint32_t len)
     }
 
     // Send image over UDP
-    uint32_t t0 = micros();
+    uint32_t t0 = hal_micros();
 
     const uint16_t CHUNK_SIZE = 1024;  // UDP max safe payload size
     uint32_t total_size = len;
@@ -78,7 +78,7 @@ void CameraESP32::sendImageOverUDP(const uint8_t* buf, const uint32_t len)
         
         udp->writeBytes(buf + offset, chunk_size);
     }
-    uint32_t tx_dt_us = micros() - t0;
+    uint32_t tx_dt_us = hal_micros() - t0;
 }
 
 const char* CameraESP32::name()

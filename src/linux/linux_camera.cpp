@@ -96,32 +96,6 @@ bool CameraLinux::doCapture()
     return true;
 }
 
-void CameraLinux::run()
-{
-    /*
-    cap.open(0);
-    if (!cap.isOpened())
-    {
-        std::cerr << "Error: Could not open camera!" << std::endl;
-        return;
-    }
-
-    while (true)
-    {
-        cap >> captured_image;
-        if (captured_image.empty())
-        {
-            std::cerr << "Error: Could not capture image!" << std::endl;
-            continue;
-        }
-
-        processImage();
-        sendImageOverUDP();
-        usleep(33000); // Approx 30 FPS
-    }
-    */
-}
-
 void CameraLinux::processImage()
 {
     // Convert to grayscale
@@ -242,6 +216,11 @@ void CameraLinux::sendImageOverUDP()
         size_t chunk_size = std::min(static_cast<size_t>(CHUNK_SIZE), total_size - i);
         sendto(sockfd, &encoded[i], chunk_size, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
     }
+}
+
+void CameraLinux::sendImageOverUDP(const uint8_t* buf, const uint32_t len)
+{
+
 }
 
 const char* CameraLinux::name()

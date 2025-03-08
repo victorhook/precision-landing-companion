@@ -53,3 +53,23 @@ uint32_t hal_micros()
 {
     return micros();
 }
+
+void hal_get_ip(char ip[17])
+{
+    String ipAddress;
+    if (WiFi.getMode() == WIFI_MODE_STA)
+    {
+        ipAddress = WiFi.localIP().toString();
+    }
+    else
+    {
+        ipAddress = WiFi.softAPIP().toString();
+    }
+    strncpy(ip, ipAddress.c_str(), 16);
+    ip[16] = 0;
+}
+
+uint32_t hal_get_free_heap()
+{
+    return ESP.getFreeHeap();
+}

@@ -182,18 +182,8 @@ class TelemetryServer:
         bytes_read = 0
         while bytes_read < nbr_of_bytes:
             bytes_left = nbr_of_bytes - bytes_read
-            bytes_read += self._socket.recv_into(buf, bytes_left)
+            bytes_read += self._socket.recv_into(buf, bytes_left, socket.MSG_WAITALL)
         return True
-
-    def _get_rx_bytes(self, nbr_of_bytes, timeout = 1) -> bytes:
-        buf = bytearray(nbr_of_bytes)
-        for i in range(nbr_of_bytes):
-            try:
-                buf[i] = self._rx.get(block=True, timeout=1)
-            except Empty:
-                print('Empty RX QUUE!')
-                return None
-        return buf
 
     def start(self, ip: str, port: int) -> None:
         self._socket: socket.socket
@@ -224,7 +214,6 @@ class TelemetryServer:
 
             while True:
                 try:
-                    #header_raw = self._get_rx_bytes(5)
                     if not self._read(5, header_buf):
                         print('CONTINUE HEADER')
                         continue
@@ -273,6 +262,10 @@ class TelemetryServer:
                     timeouts_in_row += 1
                     if timeouts_in_row > 3:
                         break
+
+                except ConnectionResetError as e:
+                    print('Connection reset by peer, closing socket')
+                    break
 
                 except Exception as e:
                     # No data available

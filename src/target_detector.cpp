@@ -83,7 +83,7 @@ void TargetDetector::detectTagsInImage(const uint32_t width, const uint32_t heig
 
             // Update timers
             tag.id = det->id;
-            tag.lastSeen = millis();
+            tag.lastSeen = hal_millis();
 
             tagTracker.updateTag(&tag);
 
@@ -234,7 +234,7 @@ void TagTracker::removeOldTags()
 {
     for (int i = 0; i < tag_count;)
     {
-        if ((millis() - tags[i].lastSeen) > TIMEOUT_MS)
+        if ((hal_millis() - tags[i].lastSeen) > TIMEOUT_MS)
         {
             removeAt(i);
         }
@@ -254,7 +254,7 @@ void TagTracker::updateTag(tag_t* tag)
         if (tags[i].id == tag->id)
         {
             memcpy(&tags[i], tag, sizeof(tag_t));
-            tags[i].lastSeen = millis();
+            tags[i].lastSeen = hal_millis();
             return;
         }
     }

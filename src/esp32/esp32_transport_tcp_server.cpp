@@ -2,6 +2,7 @@
 
 #include <WiFi.h>
 #include "log.h"
+#include <lwip/sockets.h>
 
 
 TransportTCP_Server_ESP32::TransportTCP_Server_ESP32(const int port)
@@ -72,7 +73,8 @@ void TransportTCP_Server_ESP32::receiverThread(void* arg)
 
     while (1)
     {
-        if (WiFi.status() != WL_CONNECTED)
+        // If we're connecting to a WiFI we need to ensure we're connected before we start
+        if (WiFi.getMode() == WIFI_MODE_STA && WiFi.status() != WL_CONNECTED)
         {
             delay(10);
             continue;
@@ -89,6 +91,16 @@ void TransportTCP_Server_ESP32::receiverThread(void* arg)
             if (self->client) 
             {
                 info("New client connected\n");
+                int keepAlive = 1;
+                int keepIdle = 2;    // 5 sec before sending keep-alive probe
+                int keepInterval = 1; // 1 sec between probes
+                int keepCount = 3;    // 3 failed probes = disconnect
+
+                setsockopt(self->client.fd(), SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(keepAlive));
+                setsockopt(self->client.fd(), IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(keepIdle));
+                setsockopt(self->client.fd(), IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(keepInterval));
+                setsockopt(self->client.fd(), IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(keepCount));
+
             }
         }
 

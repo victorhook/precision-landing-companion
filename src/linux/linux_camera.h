@@ -11,10 +11,12 @@
 class CameraLinux : public Camera
 {
 public:
+    using Camera::Camera;
+
     bool doInit() override;
     bool doCapture() override;
-    void run(); // Continuously captures, processes, and streams images
     const char* name() override;
+    void sendImageOverUDP(const uint8_t* buf, const uint32_t len) override;
 
 private:
     cv::Mat captured_image;

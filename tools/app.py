@@ -12,7 +12,9 @@ from threading import Thread, Lock
 
 UDP_IP = "0.0.0.0"
 UDP_PORT = 9095
-TELEMETRY_IP = '192.168.0.202'
+#TELEMETRY_IP = '192.168.4.1'
+#TELEMETRY_IP = '192.168.0.202'
+TELEMETRY_IP = '127.0.0.1'
 TELEMETRY_PORT = 9096
 
 class TagHandler(TelemetryPacketSubscriber):
