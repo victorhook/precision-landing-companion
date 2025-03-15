@@ -1,5 +1,6 @@
 #include "mavcom.h"
 #include "log.h"
+#include "globals.h"
 
 
 MavCom::MavCom()
@@ -9,10 +10,8 @@ MavCom::MavCom()
     m_udp = new TRANSPORT_UDP_CLASS(proxyPort);
 }
 
-void MavCom::init(Telemetry* telemetry)
+void MavCom::init()
 {
-    this->telemetry = telemetry;
-
     // Open communication to AP
     m_ap->init();
 
@@ -120,7 +119,7 @@ void MavCom::sendLandingTargetPacket(const landing_target_t* target)
 
 void MavCom::activateProxyIfNeeded()
 {
-    if (!proxyIsActive && telemetry->clientConnected())
+    if (!proxyIsActive && telemetryClientIsConnected())
     {
         // Proxy is active yet, but we've got a connection on the telemetry,
         // let's start the mavproxy server
@@ -130,10 +129,9 @@ void MavCom::activateProxyIfNeeded()
             // Close current activity
             m_udp->deInit();
         }
-
-        info("Starting mavproxy to %s:%d\n", proxyIP, proxyPort);
         proxyIsActive = true;
-        telemetry->getClientIP(proxyIP);
+        getTelemetryClientIp(proxyIP);
+        info("Starting mavproxy to %s:%d\n", proxyIP, proxyPort);
         m_udp->init(proxyIP);
     }
     

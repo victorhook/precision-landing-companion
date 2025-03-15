@@ -3,7 +3,6 @@
 
 #include "mavlink.h"
 #include "hal.h"
-#include "telemetry.h"
 
 // Transport
 #include "transport_udp.h"
@@ -19,7 +18,7 @@ class MavCom
 {
     public:
         MavCom();
-        void init(Telemetry* telemetry);
+        void init();
         void update_100hz();
         void update_10hz();
         void update_1hz();
