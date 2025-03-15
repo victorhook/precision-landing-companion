@@ -14,7 +14,7 @@ bool TransportAP_ESP32::init()
 
 uint32_t TransportAP_ESP32::readBytes(uint8_t *bytes, uint32_t maxLen, uint32_t timeoutMs)
 {
-    return serial->readBytes(bytes, maxLen);
+    return serial->read(bytes, maxLen);
 }
 
 uint32_t TransportAP_ESP32::writeBytes(const uint8_t *data, uint32_t len)
