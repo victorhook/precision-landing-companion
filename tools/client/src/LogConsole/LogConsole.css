@@ -1,0 +1,45 @@
+.LogConsoleWrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.LogConsoleControls {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px;
+  background-color: #222;
+  border-bottom: 1px solid gray;
+}
+
+.LogConsoleControls select, .LogConsoleControls button {
+  background: black;
+  color: white;
+  border: 1px solid gray;
+  padding: 5px;
+  cursor: pointer;
+  font-family: monospace;
+}
+
+.LogConsoleControls select {
+  flex-grow: 1;
+  margin-right: 5px;
+}
+
+.LogConsole {
+  flex-grow: 1;
+  height: 300px; /* Fixed height to prevent growing dynamically */
+  background-color: black;
+  color: white;
+  font-family: monospace;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid gray;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.log-entry {
+  margin: 0;
+  padding: 2px 0;
+}

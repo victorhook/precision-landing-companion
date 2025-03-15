@@ -1,0 +1,15 @@
+.Video {
+    border: 1px solid black;
+    width: 100%;
+    height: auto;
+}
+
+.video-stream {
+    width: 520px;
+    height: 520px;
+    min-width: 520px;
+    min-height: 520px;
+    margin: auto;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+}

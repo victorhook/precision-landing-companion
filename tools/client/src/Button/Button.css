@@ -1,0 +1,14 @@
+.Button {
+    border: 3px solid rgb(214, 214, 214);
+    color: white;
+    height: fit-content;
+    background-color: transparent;
+    border-radius: 10px;
+    padding: 0px 10px;
+    margin: 5px;
+    transition: all 0.3s;
+}
+
+.Button:hover {
+    background-color: rgb(69, 119, 78);
+}

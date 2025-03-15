@@ -1,0 +1,12 @@
+.AttitudeIndicator {
+    width: 300px;
+    height: 300px;
+    overflow: hidden;
+    background: black;
+    border-radius: 50%;
+}
+
+.AttitudeCanvas {
+    border-radius: 50%;
+    overflow: hidden;
+}

@@ -1,0 +1,27 @@
+.RadioChannels {
+    width: 100%;
+}
+
+.RadioChannelNumber {
+    width: 25px;
+    margin-right: 15px;
+}
+
+.RadioChannelBar {
+    height: 100%;
+    position: relative;
+    border: 1px solid white;
+    width: 100%;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.RadioChannelBarFill {
+    width: 50%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-color: rgba(0, 128, 0, 0.541);
+    position: absolute;
+    z-index: -1;
+}

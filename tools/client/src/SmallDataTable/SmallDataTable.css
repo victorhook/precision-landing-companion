@@ -1,0 +1,39 @@
+.small-data-table-container {
+  width: 100%;
+  max-height: 300px; /* ✅ Set a max height */
+  overflow-y: auto; /* ✅ Enable scrolling */
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 5px;
+}
+
+/* Ensure table takes full width */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Table cells styling */
+td {
+  padding: 5px;
+  border-bottom: 1px solid #ddd;
+}
+
+.key {
+  font-weight: bold;
+  text-align: left;
+}
+
+.value {
+  text-align: right;
+}
+
+/* ✅ Make sure scrollbars appear when needed */
+.small-data-table-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.small-data-table-container::-webkit-scrollbar-thumb {
+  background-color: #aaa;
+  border-radius: 5px;
+}

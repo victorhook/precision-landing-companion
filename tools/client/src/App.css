@@ -1,0 +1,35 @@
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+:root {
+  --bs-body-bg: rgb(44, 44, 44);
+  --bs-body-color: white;
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Full viewport height */
+}
+
+.MainScreen {
+  flex-grow: 1; /* Only takes remaining space */
+  overflow: hidden; /* Prevents scroll */
+  gap: 30px;
+}
+
+.LeftScreen {
+  width: 100%;
+}
+
+.MiddleScreen {
+  width: 1000px;
+  flex-shrink: 0;
+}
+
+.RightScreen {
+  width: 600px;
+  flex-shrink: 0;
+}
