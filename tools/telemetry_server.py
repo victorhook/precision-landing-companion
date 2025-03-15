@@ -18,6 +18,7 @@ class TelemetryPacketType(IntEnum):
     LOG = 0x03
     PING = 0x10
     TELEMETRY_CMD_SET_DETECTION_PARAMS = 0x30
+    TELEMETRY_CMD_ACTION = 0x31
     TELEMETRY_CMD_UNKNOWN = 0xFF
 
 @dataclass
@@ -55,6 +56,22 @@ class TelemetryCommandSetDetectionParams(TelemetryCommandPacket):
 
     _fmt = '<ffBf'
     _cmd = TelemetryPacketType.TELEMETRY_CMD_SET_DETECTION_PARAMS
+
+class Action(IntEnum):
+    ARM_CHECK = 0X01
+    ARM = 0x02
+    DISARM = 0x03
+    TAKEOFF = 0x04
+    LAND = 0x05
+    REBOOT = 0X06
+    REBOOT_AP = 0x07
+
+@dataclass
+class TelemetryCommandAction(TelemetryCommandPacket):
+    action: Action
+
+    _fmt = '<B'
+    _cmd = TelemetryPacketType.TELEMETRY_CMD_ACTION
 
 @dataclass
 class Point2F:
@@ -179,12 +196,14 @@ class TelemetryServer:
     def stop(self) -> None:
         self._stop_flag.set()
 
-    def _read(self, nbr_of_bytes: int, buf: bytearray) -> int:
+    def _read(self, nbr_of_bytes: int, buf: bytearray, timeout_s: int = 2) -> int:
         bytes_read = 0
-        while bytes_read < nbr_of_bytes:
+        t0 = time.time()
+        while bytes_read < nbr_of_bytes and ((time.time() - t0) < timeout_s):
             bytes_left = nbr_of_bytes - bytes_read
             bytes_read += self._socket.recv_into(buf, bytes_left, socket.MSG_WAITALL)
-        return True
+
+        return bytes_read == nbr_of_bytes
 
     def start(self, ip: str, port: int) -> None:
         self._socket: socket.socket
@@ -216,17 +235,19 @@ class TelemetryServer:
             while True:
                 try:
                     if not self._read(5, header_buf):
-                        print('CONTINUE HEADER')
-                        continue
+                        print('Timed out reading header, closing connection')
+                        self._socket.close()
+                        break
 
                     header = self._parse_header(header_buf)
                     if not header:
-                        print('CONTINUE HEADER 2')
+                        print(f'Failed to parse header... {header_buf}')
                         continue
 
                     if not self._read(header.len, payload_buf):
-                        print('CONTINUE HEADER')
-                        continue
+                        print('Timed out reading payload, closing connection')
+                        self._socket.close()
+                        break
 
                     packet = self._parse_packet(header, payload_buf[:header.len])
 
@@ -348,7 +369,8 @@ class TelemetryServer:
 
 
 if __name__ == '__main__':
-    ip = '192.168.0.202'
+    #ip = '192.168.0.202'
+    ip = '127.0.0.1'
     port = 9096
     server = TelemetryServer()
     server.start(ip, port)

@@ -6,8 +6,9 @@ import numpy as np
 from flask import Flask, Response, render_template, jsonify, request
 from flask_cors import CORS
 import logging
+import time
 
-from telemetry_server import TelemetryServer, TelemetryPacket, TelemetryPacketSubscriber, TelemetryTags, TelemetryPacketType, TelemetryCommandSetDetectionParams
+from telemetry_server import TelemetryServer, Action, TelemetryCommandAction, TelemetryPacketSubscriber, TelemetryTags, TelemetryPacketType, TelemetryCommandSetDetectionParams
 from threading import Thread, Lock
 
 UDP_IP = "0.0.0.0"
@@ -16,6 +17,8 @@ UDP_PORT = 9095
 #TELEMETRY_IP = '192.168.0.202'
 TELEMETRY_IP = '127.0.0.1'
 TELEMETRY_PORT = 9096
+
+last_status_request = 0
 
 class TagHandler(TelemetryPacketSubscriber):
 
@@ -38,7 +41,7 @@ telemetry_server = TelemetryServer()
 tag_handler = TagHandler()
 telemetry_server.subscribe(TelemetryPacketType.TAGS, tag_handler)
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # ✅ Suppress logging for the /telemetry route
 log = logging.getLogger("werkzeug")
@@ -135,8 +138,41 @@ def set_detection_params():
 def video_feed():   
     return Response(udp_video_stream(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/telemetry', )
+def response_success(msg: str) -> Response:
+    return jsonify({"status": "success", "message": msg}), 200
+
+def response_error(msg: str) -> Response:
+    return jsonify({"status": "error", "message": msg}), 400
+
+
+@app.route('/command', methods=['POST'])
+def command():
+    try:
+        data = request.get_json()
+        actions = {
+            'Arm': Action.ARM,
+            'Disarm': Action.DISARM,
+            'TakeOff': Action.TAKEOFF,
+            'Land': Action.LAND,
+            'ArmCheck': Action.ARM_CHECK,
+            'Reboot': Action.REBOOT,
+            'Reboot AP': Action.REBOOT_AP,
+        }
+        action = actions.get(data)
+        if action is None:
+            print(f'Invalid command {data}')
+            return response_error('Invalid command')
+        
+        print(f'Command: {data} -> {action}')
+        telemetry_server.send_packet(TelemetryCommandAction(action))
+        return response_success('Command sent')
+    except Exception as e:
+        return response_error(str(e))
+
+@app.route('/telemetry')
 def telemetry():
+    global last_status_request
+    last_status_request = time.time()
     log.setLevel(logging.ERROR)  # ✅ Hide normal logs, only show errors
     new_packets = telemetry_server.get_all_packets_no_block()
     for packet in new_packets:
@@ -151,6 +187,7 @@ def index():
 
 if __name__ == "__main__":
     print(f'Opening UDP socket on {UDP_IP}:{UDP_PORT}')
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((UDP_IP, UDP_PORT))
 
     Thread(
@@ -160,4 +197,6 @@ if __name__ == "__main__":
         daemon=True
     ).start()
 
-    app.run(host="0.0.0.0", port=8080, debug=False)
+    port = 8080
+    print(f'App port: {port}')
+    app.run(host="0.0.0.0", port=port, debug=False)

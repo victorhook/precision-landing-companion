@@ -13,5 +13,37 @@ class TelemetryStatus(TelemetryPacket):
     quad_sigma: float  # float
     refine_edges: bool  # bool
     decode_sharpening: float  # float
+    ap_last_heartbeat: int  # uint32_t
+    ap_mav_mode_flag: int  # uint8_t
+    ap_mav_state: int  # uint8_t
+    ap_flight_mode: int  # uint8_t
+    ap_roll: float  # float
+    ap_pitch: float  # float
+    ap_yaw: float  # float
+    ap_roll_speed: float  # float
+    ap_pitch_speed: float  # float
+    ap_yaw_speed: float  # float
+    ap_rngfnd_dist_m: float  # float
+    ap_bat_voltage: float  # float
+    ap_bat_perc: int  # int8_t
+    ap_local_pos_x: float  # float
+    ap_local_pos_y: float  # float
+    ap_local_pos_z: float  # float
+    ap_local_pos_vx: float  # float
+    ap_local_pos_vy: float  # float
+    ap_local_pos_vz: float  # float
+    ap_relative_alt: float  # float
+    ap_alt: float  # float
+    ap_chan1_raw: int  # uint16_t
+    ap_chan2_raw: int  # uint16_t
+    ap_chan3_raw: int  # uint16_t
+    ap_chan4_raw: int  # uint16_t
+    ap_chan5_raw: int  # uint16_t
+    ap_chan6_raw: int  # uint16_t
+    ap_chan7_raw: int  # uint16_t
+    ap_chan8_raw: int  # uint16_t
+    ap_chan9_raw: int  # uint16_t
+    ap_chan10_raw: int  # uint16_t
+    ap_rssi: int  # uint8_t
 
-    _fmt = '<IBIffBf'
+    _fmt = '<IBIffBfIBBBffffffffbffffffffHHHHHHHHHHB'
