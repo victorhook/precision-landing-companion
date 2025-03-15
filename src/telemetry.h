@@ -4,6 +4,7 @@
 #include "transport_tcp_server.h"
 #include "camera.h"
 #include "target_detector.h"
+#include "mavcom.h"
 #include "hal.h"
 
 #define TELEMTRY_LOG_MSG_MAX_SIZE 100
@@ -15,11 +16,14 @@
 
 typedef enum : uint8_t
 {
-    TELEMETRY_PACKET_STATUS = 0x01,
-    TELEMETRY_PACKET_TAGS   = 0x02,
-    TELEMETRY_PACKET_LOG    = 0x03,
-    TELEMETRY_PACKET_PING   = 0x10,
+    TELEMETRY_PACKET_STATUS            = 0x01,
+    TELEMETRY_PACKET_TAGS              = 0x02,
+    TELEMETRY_PACKET_LOG               = 0x03,
+    TELEMETRY_PACKET_PING              = 0x10,
+
+    // Control commands
     TELEMETRY_CMD_SET_DETECTION_PARAMS = 0x30,
+    TELEMETRY_CMD_ACTION               = 0x31
 } telemetry_packet_type_t;
 
 typedef enum : uint8_t
@@ -125,7 +129,7 @@ class Telemetry
 {
     public:
         Telemetry(const int tcpPort);
-        void init(Camera* camera, TargetDetector* targetDetector);
+        void init(Camera* camera, TargetDetector* targetDetector, MavCom* mavcom);
         void update();
         bool sendLogMsg(const log_level_t level, const log_group_t group, const char* msg);
         bool clientConnected();
@@ -135,6 +139,7 @@ class Telemetry
         TransportTCP_Server* tcpServer;
         Camera* camera;
         TargetDetector* targetDetector;
+        MavCom* mavcom;
         telemetry_status_t status;
         HAL_Queue<telemetry_log_t>* logQueue;
         telemetry_log_t log_tx;

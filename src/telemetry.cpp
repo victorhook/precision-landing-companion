@@ -2,6 +2,20 @@
 #include "hal.h"
 
 #include "log.h"
+#include "ap.h"
+
+
+typedef enum
+{
+    ACTION_ARM_CHECK = 0X01,
+    ACTION_ARM       = 0x02,
+    ACTION_DISARM    = 0x03,
+    ACTION_TAKEOFF   = 0x04,
+    ACTION_LAND      = 0x05,
+    ACTION_REBOOT    = 0X06,
+    ACTION_REBOOT_AP = 0x07
+} action_t;
+    
 extern ap_t ap;
 
 
@@ -12,10 +26,11 @@ Telemetry::Telemetry(const int tcpPort)
     logQueue = new HAL_QUEUE_CLASS(telemetry_log_t, 10);
 }
 
-void Telemetry::init(Camera* camera, TargetDetector* targetDetector)
+void Telemetry::init(Camera* camera, TargetDetector* targetDetector, MavCom* mavcom)
 {
     this->camera = camera;
     this->targetDetector = targetDetector;
+    this->mavcom = mavcom;
     tcpServer->init();
     status.upTimeMs = hal_millis();
     status.cameraFps = 0;
@@ -154,12 +169,48 @@ bool Telemetry::sendLogMsg(const log_level_t level, const log_group_t group, con
 void Telemetry::handleTelemetryCommand(const telemetry_rx_packet_t* pkt)
 {
     tag_detection_params_t* detection_params;
+    action_t action;
 
     switch (pkt->type)
     {
         case TELEMETRY_CMD_SET_DETECTION_PARAMS:
             detection_params = (tag_detection_params_t*) pkt->data;
             targetDetector->setTagDetectionParams(detection_params);
+            break;
+        case TELEMETRY_CMD_ACTION:
+            action = (action_t) pkt->data[0];
+            switch (action)
+            {
+                case ACTION_ARM_CHECK:
+                    info("Running pre-arm check\n");
+                    mavcom->sendCommandInt(MAV_CMD_RUN_PREARM_CHECKS);
+                    break;
+                case ACTION_ARM:
+                    info("Arming\n");
+                    break;
+                case ACTION_DISARM:
+                    info("Disarming\n");
+                    break;
+                case ACTION_TAKEOFF:
+                    info("Takeoff\n");
+                    break;
+                case ACTION_LAND:
+                    info("Landing\n");
+                    break;
+                case ACTION_REBOOT:
+                    info("Rebooting\n");
+                    // Add some delay to ensure logs gets through
+                    hal_delay(500);
+                    hal_reboot();
+                    break;
+                case ACTION_REBOOT_AP:
+                    mavcom->sendCommandInt(MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN, 0, 1);
+                    info("Rebooting AP\n");
+                    break;
+                default:
+                    warning("Unknown action %d\n", action);
+                    break;
+            }
             break;
         case TELEMETRY_PACKET_PING:
             lastTelemetryPing = hal_millis();
