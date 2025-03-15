@@ -109,7 +109,7 @@ bool CameraESP32::configureCamera()
     config.pin_reset = RESET_GPIO_NUM;
 
     config.xclk_freq_hz = 16000000;
-    config.frame_size = FRAMESIZE_QVGA;
+    config.frame_size = FRAMESIZE_240X240;
     config.pixel_format = PIXFORMAT_GRAYSCALE; // Required for AprilTag processing
     config.grab_mode = CAMERA_GRAB_LATEST; // Has to be in this mode, or detection will be lag
     config.fb_location = CAMERA_FB_IN_PSRAM;
