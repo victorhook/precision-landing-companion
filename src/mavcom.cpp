@@ -8,6 +8,7 @@ MavCom::MavCom()
 {
     m_ap = new TRANSPORT_AP_CLASS();
     m_udp = new TRANSPORT_UDP_CLASS(proxyPort);
+    apTxQueue = new HAL_QUEUE_CLASS(mavlink_message_t, 10);
 }
 
 void MavCom::init()
@@ -94,7 +95,34 @@ void MavCom::update_100hz()
             //printf("[UDP] %u\n", msg_to_gcs.seq);
         }
     }
+
+    // Send pending TX packets
+    while (!apTxQueue->isEmpty())
+    {
+        mavlink_message_t msg;
+        if (!apTxQueue->pop(msg, 0))
+        {
+            break;
+        }
+        sendMavlinkMessage(&msg);
+    }
 }
+
+bool MavCom::sendCommandInt(const uint16_t command, const uint8_t frame, const float param1, const float param2, const float param3, const float param4, const float param5, const float param6, const float param7)
+{
+    mavlink_message_t msg;
+    mavlink_msg_command_int_pack(
+        MAVLINK_SYSTEM_ID,
+        MAVLINK_COMPONENT_ID,
+        &msg,
+        1, 1, frame,
+        command,
+        0, 0,
+        param1, param2, param3, param4, param5, param6, param7
+    );
+    return apTxQueue->push(msg, 0);
+}
+
 
 // -- Private -- //
 void MavCom::sendLandingTargetPacket(const landing_target_t* target)

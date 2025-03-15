@@ -30,7 +30,7 @@ class MavCom
         bool proxyIsActive;
         char proxyIP[17];
         const uint16_t proxyPort;
-        Telemetry* telemetry;
+        HAL_Queue<mavlink_message_t>* apTxQueue;
 
         void setupMessageStreaming();
         void sendCommandIntNoQueue(const uint16_t command, const uint8_t frame = 0, const float param1 = 0, const float param2 = 0, const float param3 = 0, const float param4 = 0, const float param5 = 0, const float param6 = 0, const float param7 = 0);
