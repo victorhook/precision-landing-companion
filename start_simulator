@@ -1,5 +1,20 @@
 #!/bin/bash
 
-SITL=/home/victor/projects/ardupilot/build/sitl/bin/arducopter
+AP_ROOT=/home/victor/projects/ardupilot/
+SITL=${AP_ROOT}/build/sitl/bin/arducopter
+DEFAULT_PARAM_FILE=${AP_ROOT}/Tools/autotest/default_params/copter.parm
 
-$SITL --model copter
+PROJECT_ROOT=/home/victor/projects/precision-landing-companion/tools
+JSON_FILE=${PROJECT_ROOT}/sim.json
+PARAM_FILE=${PROJECT_ROOT}/sim.parm
+
+echo "Default param file: ${DEFAULTS_PARAM_FILE}"
+echo "Custom param file: ${PARAM_FILE}"
+echo "Custom JSON file: ${JSON_FILE}"
+
+echo "$SITL --model copter quad:${JSON_FILE} --defaults $PARAM_FILE"
+echo ""
+
+# TODO: Fix why param loading fails...
+$SITL --model copter quad:${JSON_FILE} --defaults $DEFAULT_PARAM_FILE,$PARAM_FILE
+
