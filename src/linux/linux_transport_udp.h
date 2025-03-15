@@ -24,7 +24,6 @@ public:
     uint32_t writeBytes(const uint8_t *data, uint32_t len) override;
 
 private:
-    int server_port;
     int sockfd;
 
     std::thread rx_thread;

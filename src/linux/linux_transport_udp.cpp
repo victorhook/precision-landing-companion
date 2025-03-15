@@ -24,9 +24,7 @@ void TransportUDP_Linux::doInit()
 
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(server_port);
-    // TODO: FIX
-    //inet_pton(AF_INET, ip, &server_addr.sin_addr);
+    server_addr.sin_port = htons(port);
 
     running = true;
     rx_thread = std::thread(&TransportUDP_Linux::rxLoop, this);
