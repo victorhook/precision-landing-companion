@@ -109,92 +109,16 @@ void CameraLinux::processImage()
     image_u8_t* apriltag_image = image_u8_create_stride(captured_image.cols, captured_image.rows, captured_image.step);
     memcpy(apriltag_image->buf, captured_image.data, captured_image.total());
 
-    zarray_t *detections = apriltag_detector_detect(td, apriltag_image);
+    //zarray_t *detections = apriltag_detector_detect(td, apriltag_image);
+    targetDetector->detectTagsInImage(apriltag_image->width, apriltag_image->height, apriltag_image->stride, apriltag_image->buf);
 
     // Convert back to RGB
     if (captured_image.channels() == 1) {
         cv::cvtColor(captured_image, captured_image, cv::COLOR_GRAY2BGR);
     }
 
-    // Print result
-    bool tagDetected = zarray_size(detections) > 0;
-
-    if (tagDetected)
-    {
-        sprintf(tag_detection_buf, "Detected %d aprilTags", zarray_size(detections));
-        printf("Detected %d aprilTags: ", zarray_size(detections));
-        for (int i = 0; i < zarray_size(detections); i++) {
-            apriltag_detection_t *det;
-            zarray_get(detections, i, &det);
-
-            // Get corner points
-            cv::Point2f corners[4];
-            for (int j = 0; j < 4; j++) {
-                corners[j] = cv::Point2f(det->p[j][0], det->p[j][1]);
-            }
-
-            printf("%d, ", det->id);
-
-            for (int j = 0; j < 4; j++) {
-                cv::line(captured_image, corners[j], corners[(j+1) % 4], cv::Scalar(0, 255, 0), 10);
-            }
-        
-            // Draw tag ID text
-            cv::putText(captured_image, std::to_string(det->id), corners[0], 
-                        cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
-        }
-        printf("\n");
-    }
-    else
-    {
-        sprintf(tag_detection_buf, "No tags detected");
-    }
-
-    // Cleanup
-    apriltag_detections_destroy(detections);
-    image_u8_destroy(apriltag_image);
-    
-    char fps_buf[128];
-    sprintf(fps_buf, "FPS: %d", getFps());
-
     cv::resize(captured_image, captured_image, cv::Size(640, 480), 0, 0, cv::INTER_NEAREST);
-
-    cv::putText(captured_image, tag_detection_buf, cv::Point(30, 60), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-    cv::putText(captured_image, fps_buf, cv::Point(30, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
- 
-
-    /*
-
-    // Load ArUco dictionary
-    cv::Ptr<cv::aruco::Dictionary> aruco_dict = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
-    cv::Ptr<cv::aruco::DetectorParameters> parameters = cv::aruco::DetectorParameters::create();
-
-    // Detect markers
-    std::vector<int> marker_ids;
-    std::vector<std::vector<cv::Point2f>> marker_corners;
-    cv::aruco::detectMarkers(captured_image, aruco_dict, marker_corners, marker_ids, parameters);
-
-
-
-    if (!marker_ids.empty())
-    {
-        cv::aruco::drawDetectedMarkers(captured_image, marker_corners, marker_ids);
-
-        // ✅ Add "ArUco Detected" text overlay
-        cv::putText(captured_image, "ArUco Detected", cv::Point(30, 60),
-                    cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-        
-        std::cout << "Detected " << marker_ids.size() << " ArUco marker(s)!" << std::endl;
-    }
-    else
-    {
-        // ✅ Add "No ArUco" text overlay
-        cv::putText(captured_image, "No ArUco", cv::Point(30, 60),
-                    cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
-
-        std::cout << "No ArUco markers detected." << std::endl;
-    }
-    */
+    image_u8_destroy(apriltag_image);
 }
 
 void CameraLinux::sendImageOverUDP()
