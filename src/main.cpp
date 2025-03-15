@@ -28,9 +28,9 @@ void setup()
     camera_meta_data_t meta_data = camera->getMetaData();
     targetDetector.init(meta_data.img_width, meta_data.img_height, meta_data.fov);
 
-    telemetry.init(camera, &targetDetector);
+    telemetry.init(camera, &targetDetector, &mavcom);
 
-    mavcom.init(&telemetry);
+    mavcom.init();
 
     info("Starting main loop\n");
 }
@@ -46,16 +46,20 @@ void loop()
 
     if (frame % 10 == 0)
     {
-        //mavcom.update_100hz();
+        mavcom.update_100hz();
     }
     if (frame % 100 == 0)
+    {
+        //mavcom.update_10hz();
+    }
+    if (frame % 20 == 0)
     {
         //mavcom.update_10hz();
         telemetry.update();
     }
     if (frame % 1000 == 0)
     {
-        //mavcom.update_1hz();
+        mavcom.update_1hz();
     }
     if (frame % 33 == 0)
     {
@@ -86,7 +90,8 @@ static void print_statistics()
     if ((hal_millis() - last_print) > 1000)
     {
         hal_get_ip(ip);
-        info("FPS: %d, Thrown: %d, Tags: %d, Lock: %d, IP: %s, Heap: %d\n", camera->getFps(), camera->getThrownFrames(), tags_detected, targetDetector.hasLock(), ip, hal_get_free_heap());
+        printf("IP: %s, Heap: %d, ", ip, hal_get_free_heap());
+        debug("FPS: %d, Tags: %d, Lock: %d\n", camera->getFps(), tags_detected, targetDetector.hasLock());
         last_print = hal_millis();
     }
 }
