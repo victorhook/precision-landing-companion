@@ -8,3 +8,5 @@ eeprom.bin
 *.pyc
 tools/*jpg
 src/esp32/credentials.h
+src/build.h
+logs/

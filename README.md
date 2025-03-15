@@ -6,9 +6,10 @@ This project aims to create a high-precision landing companion for Ardupilot. Th
 - [ ] Image "coordinate"
 - [X] MAVLink message
 - [ ] General procedure, how to land, switch etc
-- [ ] Tag filtering, "lock" 
+- [X] Tag filtering, "lock" 
 - [X] WiFi hotspot
 - [X] ESP32 serial port
+- [ ] Settings that persists over boot (in flash)
 
 
 ## MAVLink parameters
