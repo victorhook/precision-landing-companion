@@ -6,7 +6,7 @@
 
 
 Camera::Camera(TargetDetector* targetDetector)
-: targetDetector(targetDetector), m_isInitialized(0), m_last_fps_update(0), m_fps(0), m_thrown_frames(0)
+: targetDetector(targetDetector), m_isInitialized(0), m_last_fps_update(0), m_fps(0), m_fps_counter(0), m_thrown_frames(0)
 {
    udp = new TRANSPORT_UDP_CLASS(9095);
 }
