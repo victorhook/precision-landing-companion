@@ -134,11 +134,12 @@ void Telemetry::update()
     }
 }
 
-bool Telemetry::sendLogMsg(const log_level_t level, const char* msg)
+bool Telemetry::sendLogMsg(const log_level_t level, const log_group_t group, const char* msg)
 {
     // Create new log block and put to queue
     telemetry_log_t log;
     log.level = level;
+    log.group = group;
     log.timestamp = hal_millis();
     strncpy(log.msg, msg, TELEMTRY_LOG_MSG_MAX_SIZE);
     log.msg[TELEMTRY_LOG_MSG_MAX_SIZE] = 0; // Null termination

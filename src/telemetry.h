@@ -49,6 +49,7 @@ typedef struct
 typedef struct
 {
     uint8_t  level;
+    uint8_t  group;
     uint32_t timestamp;
     char     msg[TELEMTRY_LOG_MSG_MAX_SIZE + 1]; // Last byte is null
 }__attribute__((packed)) telemetry_log_t;
@@ -93,7 +94,7 @@ class Telemetry
         Telemetry(const int tcpPort);
         void init(Camera* camera, TargetDetector* targetDetector);
         void update();
-        bool sendLogMsg(const log_level_t level, const char* msg);
+        bool sendLogMsg(const log_level_t level, const log_group_t group, const char* msg);
         bool clientConnected();
         bool getClientIP(char ip[17]);
 

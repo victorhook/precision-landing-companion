@@ -23,10 +23,11 @@ class TelemetryPacketType(IntEnum):
 @dataclass
 class TelemetryLog(TelemetryPacket):
     level: int
+    group: int
     timestamp: int
     msg: str = ''
 
-    _fmt = '<BI'
+    _fmt = '<BBI'
 
 @dataclass
 class TelemetryCommandPacket(TelemetryPacket):
@@ -308,6 +309,7 @@ class TelemetryServer:
                 log = TelemetryLog(*struct.unpack(TelemetryLog._fmt, payload[:header_len]))
                 log.msg = payload[header_len:].decode('ascii').rstrip('\x00')
                 packet = log
+                print(f'[{log.level}, {log.group}] ({len(self._queue.queue)}) -> {log.msg.strip()}')
 
             return packet
 
