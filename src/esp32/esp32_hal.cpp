@@ -73,3 +73,8 @@ uint32_t hal_get_free_heap()
 {
     return ESP.getFreeHeap();
 }
+
+void hal_reboot()
+{
+    ESP.restart();   
+}

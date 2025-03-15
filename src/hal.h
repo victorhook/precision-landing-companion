@@ -24,6 +24,9 @@ void hal_get_ip(char ip[17]);
 /* Returns free heap, i bytes */
 uint32_t hal_get_free_heap();
 
+/* Reboots */
+void hal_reboot();
+
 /* Initializes the HAL */
 void hal_init();
 

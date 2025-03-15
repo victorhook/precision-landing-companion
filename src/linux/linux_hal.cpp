@@ -85,6 +85,11 @@ uint32_t hal_get_free_heap()
     return 0;
 }
 
+void hal_reboot()
+{
+    
+}
+
 void setup();
 void loop();
 
