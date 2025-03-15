@@ -2,6 +2,7 @@
 #include "hal.h"
 
 #include "log.h"
+extern ap_t ap;
 
 
 
@@ -72,6 +73,9 @@ void Telemetry::update()
     status.quad_sigma = detection_params.quad_sigma;
     status.refine_edges = detection_params.refine_edges;
     status.decode_sharpening = detection_params.decode_sharpening;
+
+    // Copy ap struct to telemetry. This requires all fields to be packed identical... :)
+    memcpy(&status.ap_last_heartbeat, &ap, sizeof(ap_t));
 
     sendTelemetryPacket(TELEMETRY_PACKET_STATUS, (uint8_t*) &status, sizeof(telemetry_status_t));
 

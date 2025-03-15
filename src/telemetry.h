@@ -40,6 +40,39 @@ typedef struct
     float quad_sigma;
     bool  refine_edges;
     float decode_sharpening;
+
+    uint32_t ap_last_heartbeat;
+    uint8_t  ap_mav_mode_flag;
+    uint8_t  ap_mav_state;
+    uint8_t  ap_flight_mode;
+    float    ap_roll;
+    float    ap_pitch;
+    float    ap_yaw;
+    float    ap_roll_speed;
+    float    ap_pitch_speed;
+    float    ap_yaw_speed;
+    float    ap_rngfnd_dist_m;
+    float    ap_bat_voltage;
+    int8_t   ap_bat_perc;
+    float ap_local_pos_x;
+    float ap_local_pos_y;
+    float ap_local_pos_z;
+    float ap_local_pos_vx;
+    float ap_local_pos_vy;
+    float ap_local_pos_vz;
+    float ap_relative_alt;
+    float ap_alt;
+    uint16_t ap_chan1_raw;
+    uint16_t ap_chan2_raw;
+    uint16_t ap_chan3_raw;
+    uint16_t ap_chan4_raw;
+    uint16_t ap_chan5_raw;
+    uint16_t ap_chan6_raw;
+    uint16_t ap_chan7_raw;
+    uint16_t ap_chan8_raw;
+    uint16_t ap_chan9_raw;
+    uint16_t ap_chan10_raw;
+    uint8_t  ap_rssi;
 }__attribute__((packed)) telemetry_status_t;
 // -- TELEMTRY_START END -- //
 
