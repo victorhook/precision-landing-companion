@@ -34,6 +34,12 @@ typedef enum : uint8_t
     LOG_LEVEL_ERROR   = 3,
 } log_level_t;
 
+typedef enum : uint8_t
+{
+    LOG_GROUP_MAIN = 0,
+    LOG_GROUP_AP   = 1,
+} log_group_t;
+
 // -- TELEMTRY_START START -- //
 typedef struct
 {
