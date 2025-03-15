@@ -15,12 +15,19 @@ void MavCom::init(Telemetry* telemetry)
 
     // Open communication to AP
     m_ap->init();
+
+    setupMessageStreaming();
 }
 
 
 void MavCom::update_1hz()
 {
     activateProxyIfNeeded();
+
+    if ((hal_millis() - lastSysStatus) > 1000)
+    {
+        setupMessageStreaming();
+    }
 
     mavlink_message_t msg;
 
@@ -132,12 +139,24 @@ void MavCom::activateProxyIfNeeded()
     
 }
 
-void MavCom::setMessageInterval()
+void MavCom::setupMessageStreaming()
 {
-
+    info("Requesting message stream rates from AP\n");
+    // Let's configure AP to stream the messages that we want
+    setMessageInterval(MAVLINK_MSG_ID_ATTITUDE, 10);
+    setMessageInterval(MAVLINK_MSG_ID_RANGEFINDER, 10);
+    setMessageInterval(MAVLINK_MSG_ID_SYS_STATUS, 10);
+    setMessageInterval(MAVLINK_MSG_ID_BATTERY_STATUS, 10);
+    setMessageInterval(MAVLINK_MSG_ID_RC_CHANNELS, 10);
+    setMessageInterval(MAVLINK_MSG_ID_GLOBAL_POSITION_INT, 10);
 }
 
-void MavCom::sendCommandInt(const uint16_t command, const uint8_t frame, const float param1, const float param2, const float param3, const float param4, const float param5, const float param6, const float param7)
+void MavCom::setMessageInterval(const uint16_t msg_id, const int interval_hz)
+{
+    sendCommandIntNoQueue(MAV_CMD_SET_MESSAGE_INTERVAL, 0, msg_id, (interval_hz > 0) ? 1000000.0 / interval_hz : interval_hz);
+}
+
+void MavCom::sendCommandIntNoQueue(const uint16_t command, const uint8_t frame, const float param1, const float param2, const float param3, const float param4, const float param5, const float param6, const float param7)
 {
     mavlink_message_t msg;
     mavlink_msg_command_int_pack(

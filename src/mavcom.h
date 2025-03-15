@@ -33,8 +33,8 @@ class MavCom
         const uint16_t proxyPort;
         Telemetry* telemetry;
 
-        void setMessageInterval();
-        void sendCommandInt(const uint16_t command, const uint8_t frame = 0, const float param1 = 0, const float param2 = 0, const float param3 = 0, const float param4 = 0, const float param5 = 0, const float param6 = 0, const float param7 = 0);
+        void setupMessageStreaming();
+        void sendCommandIntNoQueue(const uint16_t command, const uint8_t frame = 0, const float param1 = 0, const float param2 = 0, const float param3 = 0, const float param4 = 0, const float param5 = 0, const float param6 = 0, const float param7 = 0);
         void sendMavlinkMessage(const mavlink_message_t *msg);
 
         void activateProxyIfNeeded();
